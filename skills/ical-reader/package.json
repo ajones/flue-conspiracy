@@ -1,0 +1,17 @@
+{
+  "name": "ical-reader",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ical-add": "bun run src/scripts/ical-add.ts",
+    "ical-sync": "bun run src/scripts/ical-sync.ts",
+    "ical-query": "bun run src/scripts/ical-query.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "rrule": "^2.8.1"
+  }
+}

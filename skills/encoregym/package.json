@@ -1,0 +1,12 @@
+{
+  "name": "encoregym",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Encore Gym parent portal automation via Playwright",
+  "scripts": {
+    "install-browsers": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.52.0"
+  }
+}

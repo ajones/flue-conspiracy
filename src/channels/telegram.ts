@@ -1,32 +1,9 @@
 import { dispatch } from '@flue/runtime';
-import type { createAgent } from '@flue/runtime';
 import { createTelegramChannel, type TelegramChannel, type TelegramConversationRef } from '@flue/telegram';
 import { Api } from 'grammy';
 import type { Message, Update } from 'grammy/types';
 import { getTelegramBots, type TelegramBotConfig } from '../config.js';
-
-type Agent = ReturnType<typeof createAgent>;
-
-let _agents: Record<string, Agent> | null = null;
-
-function resolveAgent(name: string): Agent {
-  if (!_agents) {
-    // Dynamic import breaks the circular dep — by the time a webhook fires,
-    // all modules have finished evaluating.
-    _agents = {};
-    try {
-      const mod = require('../agents/hello-world.js');
-      _agents['hello-world'] = mod.default;
-    } catch {
-      // require not available in pure ESM — fall back to lazy global
-    }
-  }
-  const agent = _agents[name];
-  if (!agent) {
-    throw new Error(`Unknown agent "${name}". Available: ${Object.keys(_agents).join(', ')}`);
-  }
-  return agent;
-}
+import { classifySkills, formatSkillContext } from '../skills/index.js';
 
 export interface TelegramBot {
   config: TelegramBotConfig;
@@ -36,17 +13,23 @@ export interface TelegramBot {
 
 function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChannel) {
   return async (update: Update) => {
-    const agent = resolveAgent(bot.agent);
-
     const incoming = update.message ?? update.channel_post ?? update.business_message;
     if (incoming) {
       const conversation = conversationFromMessage(incoming);
-      await dispatch(agent, {
+      const text = incoming.text ?? incoming.caption ?? '';
+      const result = text
+        ? await classifySkills(text)
+        : { enabled: [], disabled: [], reasoning: '' };
+      const skillContext = formatSkillContext(result);
+
+      await dispatch({
+        agent: bot.agent,
         id: channel.conversationKey(conversation),
         input: {
           type: 'telegram.message',
           updateId: update.update_id,
           message: incoming,
+          ...(skillContext ? { skillContext } : {}),
         },
       });
       return;
@@ -56,7 +39,8 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
       const query = update.callback_query;
       await client.answerCallbackQuery(query.id);
       if (!query.message) return;
-      await dispatch(agent, {
+      await dispatch({
+        agent: bot.agent,
         id: channel.conversationKey(conversationFromMessage(query.message)),
         input: {
           type: 'telegram.callback_query',

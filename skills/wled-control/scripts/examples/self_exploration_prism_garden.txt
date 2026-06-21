@@ -1,0 +1,40 @@
+# Prism garden for thelabmatrix.
+# Background is intentionally dark-blue rather than empty black.
+colors: .=#0a1020 g=#4f2d9f h=#f3f7ff d=#f2c65e j=#7fe7f2 f=#ff8b57 c=#30b9c9 b=#163d59 e=#ff6aa0 i=#48d39a k=#245941
+....g.g....
+...g.h.g...
+..g.djd.g..
+...fjjjf...
+..g.djjd.g.
+.c.djjjjd.c
+c.cdhjjhd.c
+.bchhjjhhcb
+b.cdhjjhd.c
+.bcdhjjhdc.
+.bcdjjjdcb.
+.bcddddcb..
+.bcchjhhcb.
+.bccjijjccb
+.bcchjjhcc.
+.bcdhjjhdc.
+.bcjhjhjjcb
+.bcjhjhjjcb
+.bcdhjjhdc.
+.bcchjjhcc.
+.bccjijjccb
+.bcchjhhcb.
+.bcddddcb..
+.bcdjjjdcb.
+.bcdhjjhdc.
+..bchjjhcb.
+..bcjjjjcb.
+...bjjj.b..
+....cjjc...
+...cddc....
+..ckddkkc..
+.ck..ii..kc
+ck..iiii..k
+.c..i..i..c
+...i....i..
+..i......i.
+....i..i...

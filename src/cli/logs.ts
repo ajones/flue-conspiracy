@@ -1,4 +1,9 @@
+import { open, stat } from 'node:fs/promises';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
+
 const DEFAULT_SERVER = 'http://localhost:3583';
+const LOG_DIR = join(homedir(), '.piracy', 'logs');
 
 interface Run {
   runId?: string;
@@ -51,9 +56,40 @@ async function showRecent(server: string, limit: number): Promise<void> {
   }
 }
 
+async function tailStderr(): Promise<void> {
+  const logPath = join(LOG_DIR, 'stderr.log');
+  let offset = 0;
+  try {
+    const info = await stat(logPath);
+    offset = info.size;
+  } catch {
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  while (true) {
+    try {
+      const info = await stat(logPath);
+      if (info.size > offset) {
+        const fh = await open(logPath, 'r');
+        const buf = Buffer.alloc(info.size - offset);
+        await fh.read(buf, 0, buf.length, offset);
+        await fh.close();
+        process.stderr.write(decoder.decode(buf));
+        offset = info.size;
+      }
+    } catch {
+      // log file may not exist yet
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+}
+
 async function tailAll(server: string): Promise<void> {
   const seen = new Set<string>();
   console.log(`Tailing ${server}... (Ctrl+C to stop)\n`);
+
+  tailStderr();
 
   while (true) {
     try {

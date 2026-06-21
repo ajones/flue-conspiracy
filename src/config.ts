@@ -15,9 +15,16 @@ export interface BlueBubblesConfig {
   serverUrl: string;
 }
 
+export interface SkillsConfig {
+  defaultEnabled?: boolean;
+  overrides?: Record<string, boolean>;
+}
+
 export interface PiracyConfig {
+  port?: number;
   telegram?: TelegramBotConfig[];
   bluebubbles?: BlueBubblesConfig;
+  skills?: SkillsConfig;
 }
 
 const CONFIG_PATH = join(import.meta.dirname, '..', 'piracy.json5');
@@ -36,6 +43,16 @@ export function getTelegramBots(): TelegramBotConfig[] {
   return config.telegram ?? [];
 }
 
+export function getSkillsConfig(): SkillsConfig {
+  const config = loadConfig();
+  return config.skills ?? {};
+}
+
+export function isSkillEnabled(name: string): boolean {
+  const { defaultEnabled = true, overrides = {} } = getSkillsConfig();
+  return overrides[name] ?? defaultEnabled;
+}
+
 export function requireBlueBubbles(): BlueBubblesConfig {
   const config = loadConfig();
   if (!config.bluebubbles) {
@@ -45,4 +62,10 @@ export function requireBlueBubbles(): BlueBubblesConfig {
     throw new Error('bluebubbles.apiKey and bluebubbles.serverUrl are required in piracy.json5');
   }
   return config.bluebubbles;
+}
+
+export function getGatewayUrl(): string {
+  if (process.env.PIRACY_URL) return process.env.PIRACY_URL;
+  const config = loadConfig();
+  return `http://localhost:${config.port}`;
 }

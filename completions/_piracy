@@ -1,0 +1,74 @@
+#compdef piracy
+
+_piracy() {
+  local -a commands
+  commands=(
+    'start:Start the gateway (background)'
+    'stop:Stop the gateway'
+    'restart:Restart the gateway'
+    'tui:Chat with an agent'
+    'install:Install as a launchd service'
+    'uninstall:Remove the launchd service'
+    'status:Show service status'
+    'auth:Manage authentication'
+    'logs:Show recent runs'
+    'tracing:Manage the local trace viewer'
+    'help:Show help message'
+  )
+
+  local -a auth_commands
+  auth_commands=(
+    'login:Authenticate via Codex (opens browser)'
+    'status:Show current auth status'
+    'logout:Clear stored credentials'
+  )
+
+  local -a tracing_commands
+  tracing_commands=(
+    'start:Start the local trace viewer'
+    'stop:Stop the trace viewer'
+    'status:Check if the trace viewer is running'
+  )
+
+  _arguments -C \
+    '(-h --help)'{-h,--help}'[Show help message]' \
+    '1:command:->command' \
+    '*::arg:->args'
+
+  case "$state" in
+    command)
+      _describe -t commands 'piracy command' commands
+      ;;
+    args)
+      case "${words[1]}" in
+        auth)
+          _describe -t auth_commands 'auth command' auth_commands
+          ;;
+        tracing)
+          _describe -t tracing_commands 'tracing command' tracing_commands
+          ;;
+        logs)
+          _arguments \
+            '-f[Tail runs in real time]' \
+            '1:run ID:'
+          ;;
+        tui)
+          local -a agents
+          local piracy_bin="${commands[piracy]:-$(command -v piracy 2>/dev/null)}"
+          local project_root
+          if [[ -n "$piracy_bin" ]]; then
+            project_root="${piracy_bin:A:h}"
+            # resolve symlink to project — npm link points bin -> src/cli/index.ts
+            [[ -L "$piracy_bin" ]] && project_root="$(cd "$(dirname "$(readlink "$piracy_bin")")/.." && pwd)"
+          fi
+          if [[ -d "${project_root}/src/agents" ]]; then
+            agents=(${${(f)"$(ls "${project_root}/src/agents"/*.ts 2>/dev/null)"}:t:r})
+          fi
+          _describe -t agents 'agent' agents
+          ;;
+      esac
+      ;;
+  esac
+}
+
+_piracy "$@"

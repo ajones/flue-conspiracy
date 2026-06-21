@@ -1,22 +1,23 @@
 import { createRequire } from "node:module";
 import { sqlite } from "@flue/runtime/node";
 import { Bash, InMemoryFs, bashFactoryToSessionEnv, configureFlueRuntime, createFlueContext, createNodeAgentCoordinator, createNodeDispatchQueue, generateWorkflowRunId, invokeDirectAttached, invokeWorkflowAttached, resolveModel } from "@flue/runtime/internal";
-import { createAgent, defineAgentProfile, defineTool, dispatch, getRun, listRuns, registerProvider } from "@flue/runtime";
+import { createAgent, defineAgentProfile, defineTool, dispatch, getRun, listRuns, observe, registerProvider } from "@flue/runtime";
 import { createTelegramChannel } from "@flue/telegram";
 import { Api } from "grammy";
 import JSON5 from "json5";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { flue } from "@flue/runtime/routing";
-import { Hono } from "hono";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
+import { NodeSDK } from "@opentelemetry/sdk-node";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
+import { resourceFromAttributes } from "@opentelemetry/resources";
+import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+import { createOpenTelemetryObserver } from "@flue/opentelemetry";
+import { flue } from "@flue/runtime/routing";
+import { Hono } from "hono";
 //#region \0rolldown/runtime.js
 var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __esmMin = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 var __commonJSMin = (cb, mod) => () => (mod || (cb((mod = { exports: {} }).exports, mod), cb = null), mod.exports);
 var __exportAll = (all, no_symbols) => {
 	let target = {};
@@ -27,17 +28,6 @@ var __exportAll = (all, no_symbols) => {
 	if (!no_symbols) __defProp(target, Symbol.toStringTag, { value: "Module" });
 	return target;
 };
-var __copyProps = (to, from, except, desc) => {
-	if (from && typeof from === "object" || typeof from === "function") for (var keys = __getOwnPropNames(from), i = 0, n = keys.length, key; i < n; i++) {
-		key = keys[i];
-		if (!__hasOwnProp.call(to, key) && key !== except) __defProp(to, key, {
-			get: ((k) => from[k]).bind(null, key),
-			enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
-		});
-	}
-	return to;
-};
-var __toCommonJS = (mod) => __hasOwnProp.call(mod, "module.exports") ? mod["module.exports"] : __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var __require = /* @__PURE__ */ createRequire(import.meta.url);
 //#endregion
 //#region \0virtual:flue/packaged-skills
@@ -137,8 +127,8 @@ var require_websocket = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	});
 }));
 //#endregion
-//#region node_modules/@hono/node-server/dist/index.cjs
-var require_dist = /* @__PURE__ */ __commonJSMin(((exports) => {
+//#region src/telegram-tools.ts
+var import_dist = (/* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 	var require_constants = require_constants_BXAKTxRC();
 	var node_http = __require("node:http");
@@ -1157,9 +1147,7 @@ var require_dist = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.getRequestListener = getRequestListener;
 	exports.serve = serve;
 	exports.upgradeWebSocket = upgradeWebSocket;
-}));
-//#endregion
-//#region src/telegram-tools.ts
+})))();
 function postMessage(client, ref) {
 	return defineTool({
 		name: "post_telegram_message",
@@ -1183,23 +1171,189 @@ function postMessage(client, ref) {
 		}
 	});
 }
-var init_telegram_tools = __esmMin((() => {}));
 //#endregion
 //#region src/config.ts
+var CONFIG_PATH = join(import.meta.dirname, "..", "piracy.json5");
+var cached$1 = null;
 function loadConfig() {
-	if (cached) return cached;
+	if (cached$1) return cached$1;
 	const raw = readFileSync(CONFIG_PATH, "utf8");
-	cached = JSON5.parse(raw);
-	return cached;
+	cached$1 = JSON5.parse(raw);
+	return cached$1;
 }
 function getTelegramBots() {
 	return loadConfig().telegram ?? [];
 }
-var CONFIG_PATH, cached;
-var init_config = __esmMin((() => {
-	CONFIG_PATH = join(import.meta.dirname, "..", "piracy.json5");
-	cached = null;
-}));
+function getSkillsConfig() {
+	return loadConfig().skills ?? {};
+}
+function isSkillEnabled(name) {
+	const { defaultEnabled = true, overrides = {} } = getSkillsConfig();
+	return overrides[name] ?? defaultEnabled;
+}
+//#endregion
+//#region src/skills/discover.ts
+var SKILLS_ROOT = join(import.meta.dirname, "..", "..", "skills");
+function parseFrontmatter(raw) {
+	const match = raw.replace(/^﻿/, "").match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*(?:\r?\n|$)([\s\S]*)$/);
+	if (!match) return {
+		meta: {},
+		body: raw.trim()
+	};
+	const meta = {};
+	for (const line of (match[1] ?? "").split("\n")) {
+		const sep = line.indexOf(":");
+		if (sep === -1) continue;
+		const key = line.slice(0, sep).trim();
+		const val = line.slice(sep + 1).trim();
+		if (key) meta[key] = val;
+	}
+	return {
+		meta,
+		body: (match[2] ?? "").trim()
+	};
+}
+function walk(dir, prefix) {
+	const skills = [];
+	let entries;
+	try {
+		entries = readdirSync(dir);
+	} catch {
+		return skills;
+	}
+	for (const entry of entries) {
+		const full = join(dir, entry);
+		try {
+			if (!statSync(full).isDirectory()) continue;
+		} catch {
+			continue;
+		}
+		const segments = [...prefix, entry];
+		const candidates = [join(full, "SKILL.md"), join(full, "skill.md")];
+		for (const skillMdPath of candidates) try {
+			const { meta, body } = parseFrontmatter(readFileSync(skillMdPath, "utf8"));
+			skills.push({
+				name: segments.join(":"),
+				description: meta.description ?? "",
+				body,
+				directory: full,
+				skillMdPath
+			});
+			break;
+		} catch {}
+		skills.push(...walk(full, segments));
+	}
+	return skills;
+}
+var cached = null;
+function loadSkills() {
+	if (cached) return cached;
+	const list = walk(SKILLS_ROOT, []);
+	cached = new Map(list.map((s) => [s.name, s]));
+	return cached;
+}
+//#endregion
+//#region src/auth/tokens.ts
+var AUTH_FILE = join(homedir(), ".codex", "auth.json");
+async function loadCodexAuth() {
+	const raw = await readFile(AUTH_FILE, "utf8");
+	return JSON.parse(raw);
+}
+async function getAccessToken() {
+	const auth = await loadCodexAuth();
+	if (auth.tokens?.access_token) return auth.tokens.access_token;
+	if (auth.OPENAI_API_KEY) return auth.OPENAI_API_KEY;
+	throw new Error("Not authenticated — run `piracy auth login` or `codex login` first");
+}
+//#endregion
+//#region src/skills/classify.ts
+var CLASSIFIER_PROMPT = `You are a skill classifier. Given a user message and a catalog of available skills, select which skills (if any) are relevant to handling the message.
+
+Rules:
+- Be precise. Only select skills whose instructions would materially help handle this specific message.
+- Return an empty list if no skills are relevant — most messages need zero skills.
+- Never exceed the max skill count.
+- Return valid JSON matching the schema exactly.`;
+function buildUserPrompt(message, catalog, maxSkills) {
+	return `<catalog>
+${catalog.map((s) => `- ${s.name}: ${s.description}`).join("\n")}
+</catalog>
+
+<message>
+${message}
+</message>
+
+Select 0 to ${maxSkills} skills. Respond with JSON:
+{"skills": ["skill-name", ...], "reasoning": "one sentence why"}`;
+}
+async function classifySkills(message, options = {}) {
+	const { maxSkills = 3, model = "gpt-5.4-mini" } = options;
+	const skills = loadSkills();
+	if (skills.size === 0) return {
+		enabled: [],
+		disabled: [],
+		reasoning: "no skills available"
+	};
+	const catalog = [...skills.values()].map((s) => ({
+		name: s.name,
+		description: s.description
+	}));
+	const token = await getAccessToken();
+	const response = await fetch("https://api.openai.com/v1/chat/completions", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${token}`
+		},
+		body: JSON.stringify({
+			model,
+			temperature: 0,
+			max_tokens: 256,
+			response_format: { type: "json_object" },
+			messages: [{
+				role: "system",
+				content: CLASSIFIER_PROMPT
+			}, {
+				role: "user",
+				content: buildUserPrompt(message, catalog, maxSkills)
+			}]
+		})
+	});
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(`Classifier call failed (${response.status}): ${text}`);
+	}
+	const raw = (await response.json()).choices[0]?.message?.content ?? "{}";
+	let parsed;
+	try {
+		parsed = JSON.parse(raw);
+	} catch {
+		return {
+			enabled: [],
+			disabled: [],
+			reasoning: "classifier returned invalid JSON"
+		};
+	}
+	const matched = (parsed.skills ?? []).slice(0, maxSkills).map((n) => skills.get(n)).filter((s) => s !== void 0);
+	const enabled = [];
+	const disabled = [];
+	for (const skill of matched) if (isSkillEnabled(skill.name)) enabled.push(skill);
+	else disabled.push(skill);
+	return {
+		enabled,
+		disabled,
+		reasoning: parsed.reasoning ?? ""
+	};
+}
+function formatSkillContext(result) {
+	const parts = [];
+	for (const s of result.enabled) parts.push(`<skill name="${s.name}">\n${s.body}\n</skill>`);
+	if (result.disabled.length > 0) {
+		const names = result.disabled.map((s) => s.name);
+		parts.push(`<disabled-skills>\nThe following skills matched this message but are disabled in the config: ${names.join(", ")}.\nLet the user know these skills are available but currently disabled. Suggest they enable the skill in piracy.json5 under skills.overrides, or offer to help solve their request a different way.\n</disabled-skills>`);
+	}
+	return parts.join("\n\n");
+}
 //#endregion
 //#region src/channels/telegram.ts
 var telegram_exports = /* @__PURE__ */ __exportAll({
@@ -1207,30 +1361,25 @@ var telegram_exports = /* @__PURE__ */ __exportAll({
 	channel: () => channel,
 	startPolling: () => startPolling
 });
-function resolveAgent(name) {
-	if (!_agents) {
-		_agents = {};
-		try {
-			const mod = (init_hello_world(), __toCommonJS(hello_world_exports));
-			_agents["hello-world"] = mod.default;
-		} catch {}
-	}
-	const agent = _agents[name];
-	if (!agent) throw new Error(`Unknown agent "${name}". Available: ${Object.keys(_agents).join(", ")}`);
-	return agent;
-}
 function handleUpdate(bot, client, channel) {
 	return async (update) => {
-		const agent = resolveAgent(bot.agent);
 		const incoming = update.message ?? update.channel_post ?? update.business_message;
 		if (incoming) {
 			const conversation = conversationFromMessage(incoming);
-			await dispatch(agent, {
+			const text = incoming.text ?? incoming.caption ?? "";
+			const skillContext = formatSkillContext(text ? await classifySkills(text) : {
+				enabled: [],
+				disabled: [],
+				reasoning: ""
+			});
+			await dispatch({
+				agent: bot.agent,
 				id: channel.conversationKey(conversation),
 				input: {
 					type: "telegram.message",
 					updateId: update.update_id,
-					message: incoming
+					message: incoming,
+					...skillContext ? { skillContext } : {}
 				}
 			});
 			return;
@@ -1239,7 +1388,8 @@ function handleUpdate(bot, client, channel) {
 			const query = update.callback_query;
 			await client.answerCallbackQuery(query.id);
 			if (!query.message) return;
-			await dispatch(agent, {
+			await dispatch({
+				agent: bot.agent,
 				id: channel.conversationKey(conversationFromMessage(query.message)),
 				input: {
 					type: "telegram.callback_query",
@@ -1281,6 +1431,13 @@ function conversationFromMessage(message) {
 		...topic
 	};
 }
+var bots = getTelegramBots().filter((b) => b.botToken).map(createBot);
+var channel = bots[0]?.channel ?? createTelegramChannel({
+	secretToken: "unconfigured",
+	async webhook() {
+		return new Response("No telegram bots configured", { status: 503 });
+	}
+});
 function startPolling() {
 	const pollingBots = bots.filter((b) => (b.config.mode ?? "poll") === "poll");
 	for (const bot of pollingBots) {
@@ -1319,79 +1476,93 @@ function startPolling() {
 		});
 	}
 }
-var _agents, botConfigs, bots, defaultChannel, channel;
-var init_telegram = __esmMin((() => {
-	init_config();
-	_agents = null;
-	botConfigs = getTelegramBots().filter((b) => b.botToken);
-	bots = botConfigs.map(createBot);
-	defaultChannel = bots[0]?.channel ?? createTelegramChannel({
-		secretToken: "unconfigured",
-		async webhook() {
-			return new Response("No telegram bots configured", { status: 503 });
-		}
-	});
-	channel = defaultChannel;
-}));
 //#endregion
 //#region src/agents/hello-world.ts
 var hello_world_exports = /* @__PURE__ */ __exportAll({
 	default: () => hello_world_default,
-	route: () => route
+	route: () => route$1
 });
-var route, helloWorld, hello_world_default;
-var init_hello_world = __esmMin((() => {
-	init_telegram_tools();
-	init_telegram();
-	route = async (_c, next) => next();
-	helloWorld = defineAgentProfile({
-		name: "hello-world",
-		instructions: `You are a friendly polyglot greeter. When the user asks you to say hello world, you respond with "hello world" translated into the language they request. If they don't specify a language, pick a random one and tell them which language it is.
+var route$1 = async (_c, next) => next();
+var helloWorld = defineAgentProfile({
+	name: "hello-world",
+	instructions: `You are a friendly polyglot greeter. When the user asks you to say hello world, you respond with "hello world" translated into the language they request. If they don't specify a language, pick a random one and tell them which language it is.
 
 You only do one thing: say hello world in different languages. If the user asks you to do anything else, politely decline and remind them you're the hello-world agent.
 
 Always include the original script/alphabet when applicable (e.g. こんにちは世界 for Japanese).
 
 When you receive a Telegram message, use the post_telegram_message tool to reply.`
-	});
-	hello_world_default = createAgent(({ id }) => {
-		const tools = [];
-		if (id.startsWith("telegram:")) {
-			const bot = bots.find((b) => {
-				try {
-					b.channel.parseConversationKey(id);
-					return true;
-				} catch {
-					return false;
-				}
-			}) ?? bots[0];
-			if (bot) tools.push(postMessage(bot.client, bot.channel.parseConversationKey(id)));
-		}
-		return {
-			profile: helloWorld,
-			model: "openai-codex/gpt-5.4-mini",
-			tools
-		};
-	});
-}));
+});
+var hello_world_default = createAgent(({ id }) => {
+	const tools = [];
+	if (id.startsWith("telegram:")) {
+		const bot = bots.find((b) => {
+			try {
+				b.channel.parseConversationKey(id);
+				return true;
+			} catch {
+				return false;
+			}
+		}) ?? bots[0];
+		if (bot) tools.push(postMessage(bot.client, bot.channel.parseConversationKey(id)));
+	}
+	return {
+		profile: helloWorld,
+		model: "openai-codex/gpt-5.4-mini",
+		tools
+	};
+});
 //#endregion
-//#region src/auth/tokens.ts
-var import_dist = require_dist();
-init_hello_world();
-var AUTH_FILE = join(homedir(), ".codex", "auth.json");
-async function loadCodexAuth() {
-	const raw = await readFile(AUTH_FILE, "utf8");
-	return JSON.parse(raw);
-}
-async function getAccessToken() {
-	const auth = await loadCodexAuth();
-	if (auth.tokens?.access_token) return auth.tokens.access_token;
-	if (auth.OPENAI_API_KEY) return auth.OPENAI_API_KEY;
-	throw new Error("Not authenticated — run `piracy auth login` or `codex login` first");
+//#region src/agents/raven-lead.ts
+var raven_lead_exports = /* @__PURE__ */ __exportAll({
+	default: () => raven_lead_default,
+	route: () => route
+});
+var route = async (_c, next) => next();
+var ravenLead = defineAgentProfile({
+	name: "raven-lead",
+	instructions: `You are Raven Lead, a coordinator agent. Delegate every user message to the 'mystery' subagent and reply with its result.
+
+When you receive a Telegram message, use the post_telegram_message tool to reply.`,
+	subagents: [defineAgentProfile({
+		name: "mystery",
+		description: "Wraps the user's message into a mysterious, enigmatic reply.",
+		instructions: `You are Mystery, a cryptic oracle who speaks in riddles and shadows. Take whatever the user says and transform it into a mysterious, enigmatic response. Cloak the original meaning in metaphor, fog, and intrigue — but keep the core idea recognizable. Be theatrical but concise. Never break character. Never explain yourself.`
+	})]
+});
+var raven_lead_default = createAgent(({ id }) => {
+	const tools = [];
+	if (id.startsWith("telegram:")) {
+		const bot = bots.find((b) => {
+			try {
+				b.channel.parseConversationKey(id);
+				return true;
+			} catch {
+				return false;
+			}
+		}) ?? bots[0];
+		if (bot) tools.push(postMessage(bot.client, bot.channel.parseConversationKey(id)));
+	}
+	return {
+		profile: ravenLead,
+		model: "openai-codex/gpt-5.4-mini",
+		tools
+	};
+});
+//#endregion
+//#region src/instrumentation.ts
+if (process.env.OTEL_DISABLED !== "true") {
+	const sdk = new NodeSDK({
+		resource: resourceFromAttributes({ [ATTR_SERVICE_NAME]: "flue-conspiracy" }),
+		traceExporter: new OTLPTraceExporter({ url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? "http://localhost:4318/v1/traces" })
+	});
+	sdk.start();
+	observe(createOpenTelemetryObserver({ exportContent: (event) => event }));
+	process.on("SIGTERM", () => sdk.shutdown());
+	process.on("SIGINT", () => sdk.shutdown());
 }
 //#endregion
 //#region src/app.ts
-init_telegram();
 registerProvider("openai-codex", { apiKey: await getAccessToken() });
 var app = new Hono();
 app.get("/api/runs", async (c) => {
@@ -1408,10 +1579,13 @@ for (const bot of bots.slice(1)) for (const route of bot.channel.routes) {
 	app.on(route.method, [path], route.handler);
 }
 app.route("/", flue());
+app.onError((err, c) => {
+	console.error(`[${c.req.method} ${c.req.path}]`, err);
+	return c.json({ error: "internal server error" }, 500);
+});
 startPolling();
 //#endregion
 //#region .flue-vite/_entry_server.ts
-init_telegram();
 var packagedSkills = getPackagedSkills();
 function normalizeBuiltModules(agentModules, workflowModules, channelModules = {}) {
 	const manifest = {
@@ -1485,7 +1659,10 @@ function normalizeBuiltModules(agentModules, workflowModules, channelModules = {
 		channelHandlers
 	};
 }
-var { manifest, createdAgents, dispatchAgentNames, workflowHandlers, localWorkflowHandlers, agentRouteMiddleware, workflowRouteMiddleware, channelHandlers } = normalizeBuiltModules({ "hello-world": hello_world_exports }, {}, { "telegram": telegram_exports });
+var { manifest, createdAgents, dispatchAgentNames, workflowHandlers, localWorkflowHandlers, agentRouteMiddleware, workflowRouteMiddleware, channelHandlers } = normalizeBuiltModules({
+	"hello-world": hello_world_exports,
+	"raven-lead": raven_lead_exports
+}, {}, { "telegram": telegram_exports });
 var isLocalMode = process.env.FLUE_MODE === "local";
 var localCliTarget = process.env.FLUE_CLI_TARGET;
 var localCliName = process.env.FLUE_CLI_NAME;
@@ -1737,7 +1914,7 @@ if (isLocalCliMode && hasIpcChannel) {
 	});
 	console.log("[flue] Server listening on http://localhost:" + port);
 	if (isLocalMode) console.log("[flue] Mode: local");
-	console.log("[flue] Agents: hello-world");
+	console.log("[flue] Agents: hello-world, raven-lead");
 	let shuttingDown = false;
 	async function stop(signal, exitCode) {
 		if (shuttingDown) return;

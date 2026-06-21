@@ -1,3 +1,4 @@
+import './instrumentation.js';
 import { registerProvider, listRuns, getRun } from '@flue/runtime';
 import { flue } from '@flue/runtime/routing';
 import { Hono } from 'hono';
@@ -29,6 +30,11 @@ for (const bot of bots.slice(1)) {
 }
 
 app.route('/', flue());
+
+app.onError((err, c) => {
+  console.error(`[${c.req.method} ${c.req.path}]`, err);
+  return c.json({ error: 'internal server error' }, 500);
+});
 
 startPolling();
 

@@ -3,22 +3,35 @@
 import { parseArgs } from 'node:util';
 import { auth } from './auth.js';
 import { logs } from './logs.js';
+import { tracing } from './tracing.js';
+import { start, stop, install, uninstall, restart, serviceStatus } from './service.js';
+import { tui } from './tui.js';
 
 const USAGE = `piracy — flue-conspiracy CLI
 
 Usage:
-  piracy auth login       Authenticate via Codex (opens browser)
-  piracy auth status      Show current auth status
-  piracy auth logout      Clear stored credentials
-  piracy logs             Show recent runs
-  piracy logs -f          Tail runs in real time
-  piracy logs <runId>     Stream events for a specific run
+  piracy start              Start the gateway (background)
+  piracy stop               Stop the gateway
+  piracy restart            Restart the gateway
+  piracy tui [agent]        Chat with an agent
+  piracy install            Install as a launchd service
+  piracy uninstall          Remove the launchd service
+  piracy status             Show service status
+  piracy auth login         Authenticate via Codex (opens browser)
+  piracy auth status        Show current auth status
+  piracy auth logout        Clear stored credentials
+  piracy logs               Show recent runs
+  piracy logs -f            Tail runs in real time
+  piracy logs <runId>       Stream events for a specific run
+  piracy tracing start      Start the local trace viewer
+  piracy tracing stop       Stop the trace viewer
+  piracy tracing status     Check if the trace viewer is running
 
 Options:
-  --help, -h              Show this help message
+  --help, -h                Show this help message
 `;
 
-function main() {
+async function main() {
   const { positionals } = parseArgs({
     allowPositionals: true,
     strict: false,
@@ -31,12 +44,24 @@ function main() {
     process.exit(0);
   }
 
+  if (command === 'start') return start();
+  if (command === 'stop') return stop();
+  if (command === 'restart') return restart();
+  if (command === 'tui') return tui(rest);
+  if (command === 'install') return install();
+  if (command === 'uninstall') return uninstall();
+  if (command === 'status') return serviceStatus();
+
   if (command === 'auth') {
     return auth(rest[0]);
   }
 
   if (command === 'logs') {
     return logs(process.argv.slice(3));
+  }
+
+  if (command === 'tracing') {
+    return tracing(rest);
   }
 
   console.error(`Unknown command: ${command}\n`);

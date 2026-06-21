@@ -1,0 +1,4 @@
+interface:
+  display_name: "Friend CRM"
+  short_description: "Read, rank, and update relationship records for friends."
+  default_prompt: "Use when the task involves the Friend CRM project, reading or updating person notes, ranking who needs attention, or drafting relationship nudges."
