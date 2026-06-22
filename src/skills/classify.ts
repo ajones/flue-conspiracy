@@ -1,6 +1,6 @@
-import { getAccessToken } from '../auth/tokens.js';
-import { isSkillEnabled } from '../config.js';
-import { loadSkills, type DiscoveredSkill } from './discover.js';
+import { getAccessToken } from '../auth/tokens.ts';
+import { isSkillEnabled } from '../config.ts';
+import { loadSkills, type DiscoveredSkill } from './discover.ts';
 
 export interface ClassifierOptions {
   maxSkills?: number;
@@ -57,7 +57,7 @@ export async function classifySkills(
   }));
 
   const token = await getAccessToken();
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetch('https://chatgpt.com/backend-api/codex/responses', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -65,13 +65,13 @@ export async function classifySkills(
     },
     body: JSON.stringify({
       model,
-      temperature: 0,
-      max_tokens: 256,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: CLASSIFIER_PROMPT },
-        { role: 'user', content: buildUserPrompt(message, catalog, maxSkills) },
-      ],
+      stream: false,
+      instructions: CLASSIFIER_PROMPT,
+      input: [{ role: 'user', content: buildUserPrompt(message, catalog, maxSkills) }],
+      text: { format: { type: 'json_object' } },
+      max_output_tokens: 256,
+      reasoning: { effort: 'low' },
+      store: false,
     }),
   });
 
@@ -81,10 +81,14 @@ export async function classifySkills(
   }
 
   const data = (await response.json()) as {
-    choices: { message: { content: string } }[];
+    output?: { type: string; content?: { type: string; text?: string }[] }[];
   };
 
-  const raw = data.choices[0]?.message?.content ?? '{}';
+  const textOutput = data.output
+    ?.find((o) => o.type === 'message')
+    ?.content?.find((c) => c.type === 'output_text')
+    ?.text;
+  const raw = textOutput ?? '{}';
   let parsed: { skills?: string[]; reasoning?: string };
   try {
     parsed = JSON.parse(raw);

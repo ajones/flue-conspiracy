@@ -1,4 +1,4 @@
-import type { ScriptDef, ScriptResult } from './types.js';
+import type { ScriptDef, ScriptResult } from './types.ts';
 
 const MAX_ERROR_LINES = 25;
 

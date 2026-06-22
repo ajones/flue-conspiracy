@@ -9,7 +9,7 @@ export interface DiscoveredSkill {
   skillMdPath: string;
 }
 
-const SKILLS_ROOT = join(import.meta.dirname, '..', '..', 'skills');
+const SKILLS_ROOT = join(process.cwd(), 'skills');
 
 function parseFrontmatter(raw: string): { meta: Record<string, string>; body: string } {
   const match = raw.replace(/^﻿/, '').match(

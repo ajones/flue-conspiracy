@@ -1,7 +1,7 @@
 import { createAgent, defineAgentProfile } from '@flue/runtime';
 import type { AgentRouteHandler } from '@flue/runtime';
-import { postMessage } from '../telegram-tools.js';
-import { bots } from '../channels/telegram.js';
+import { postMessage } from '../telegram-tools.ts';
+import { bots } from '../channels/telegram.ts';
 
 export const route: AgentRouteHandler = async (_c, next) => next();
 

@@ -1,7 +1,7 @@
 import Database, { type Database as DatabaseInstance } from 'better-sqlite3';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { JobRow, JobRunRow, CreateJobInput, UpdateJobInput, Schedule, ScriptDef } from './types.js';
+import type { JobRow, JobRunRow, CreateJobInput, UpdateJobInput, Schedule, ScriptDef } from './types.ts';
 
 const DATA_DIR = resolve(import.meta.dirname, '..', '..', '.data');
 const DB_PATH = resolve(DATA_DIR, 'scheduler.db');

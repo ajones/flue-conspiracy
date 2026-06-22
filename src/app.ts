@@ -2,10 +2,10 @@ import './instrumentation.js';
 import { registerProvider, listRuns, getRun } from '@flue/runtime';
 import { flue } from '@flue/runtime/routing';
 import { Hono } from 'hono';
-import { getAccessToken } from './auth/tokens.js';
-import { bots, startPolling } from './channels/telegram.js';
-import { Scheduler, createJobRoutes } from './scheduler/index.js';
-import { getSchedulerConfig } from './config.js';
+import { getAccessToken } from './auth/tokens.ts';
+import { bots, startPolling } from './channels/telegram.ts';
+import { Scheduler, createJobRoutes } from './scheduler/index.ts';
+import { getSchedulerConfig } from './config.ts';
 
 const token = await getAccessToken();
 registerProvider('openai-codex', { apiKey: token });

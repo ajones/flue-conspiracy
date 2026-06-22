@@ -17,6 +17,7 @@ class GoogleWeather:
         self.api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GOOGLE_WEATHER_API_KEY") or os.getenv("GOOGLE_MAPS_API_KEY")
         self.current_url = "https://weather.googleapis.com/v1/currentConditions:lookup"
         self.forecast_url = "https://weather.googleapis.com/v1/forecast/hours:lookup"
+        self.daily_forecast_url = "https://weather.googleapis.com/v1/forecast/days:lookup"
         self.geocode_url = "https://maps.googleapis.com/maps/api/geocode/json"
         self._token = None
         if not self.api_key and os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
@@ -226,10 +227,83 @@ class GoogleWeather:
             "wind_unit": "mph" if imperial else "km/h"
         }
 
+    def daily_forecast(self, location, days=10, language="en", units="IMPERIAL"):
+        """Get daily forecast with high/low temperatures."""
+        error = self._validate_key()
+        if error:
+            return error
+
+        coords = self.geocode(location) if isinstance(location, str) else location
+        if not coords:
+            return {"error": f"Could not find location: {location}"}
+        lat, lon = coords
+
+        key_params, headers = self._auth_params()
+        params = {
+            **key_params,
+            "location.latitude": lat,
+            "location.longitude": lon,
+            "days": days,
+            "languageCode": language,
+        }
+
+        try:
+            res = requests.get(self.daily_forecast_url, params=params, headers=headers)
+            if res.status_code != 200:
+                return {"error": f"API error: {res.status_code}", "details": res.text}
+            data = res.json()
+        except Exception as e:
+            return {"error": f"Request failed: {str(e)}"}
+
+        imperial = units == "IMPERIAL"
+
+        def to_f(c):
+            return round(c * 9/5 + 32, 1) if c is not None else None
+
+        def to_mph(kmh):
+            return round(kmh * 0.621371, 1) if kmh is not None else None
+
+        daily = []
+        for d in data.get("forecastDays", []):
+            interval = d.get("interval", {})
+            daytime = d.get("daytimeForecast", {})
+            nighttime = d.get("nighttimeForecast", {})
+            temp_range = d.get("temperature", {})
+            high = temp_range.get("max", {}).get("degrees")
+            low = temp_range.get("min", {}).get("degrees")
+            wind = d.get("maxWind", {})
+            spd = wind.get("speed", {}).get("value")
+
+            entry = {
+                "date": interval.get("startTime", "")[:10],
+                "high": to_f(high) if imperial else high,
+                "low": to_f(low) if imperial else low,
+                "daytime_condition": daytime.get("weatherCondition", {}).get("description", {}).get("text", ""),
+                "nighttime_condition": nighttime.get("weatherCondition", {}).get("description", {}).get("text", ""),
+                "max_wind": {
+                    "speed": to_mph(spd) if imperial else spd,
+                    "direction": wind.get("direction", {}).get("cardinal", ""),
+                },
+                "precip_prob": d.get("precipitation", {}).get("probability", {}).get("percent", 0),
+                "sunrise": d.get("sunrise", ""),
+                "sunset": d.get("sunset", ""),
+            }
+            daily.append(entry)
+
+        return {
+            "location": location,
+            "daily": daily,
+            "temp_unit": "°F" if imperial else "°C",
+            "wind_unit": "mph" if imperial else "km/h",
+        }
+
     def format_summary(self, data):
         """Format weather data as human-readable summary."""
         if "error" in data:
             return f"Error: {data['error']}"
+
+        if "daily" in data:
+            return self.format_daily(data)
 
         if "hourly" in data:
             return self.format_forecast(data)
@@ -261,12 +335,32 @@ class GoogleWeather:
         return "\n".join(lines)
 
 
+    def format_daily(self, data):
+        """Format daily forecast data."""
+        temp_unit = data.get("temp_unit", "°F")
+        lines = [f"*Forecast for {data['location']}*"]
+        for d in data["daily"]:
+            date_str = d["date"]
+            try:
+                dt = datetime.strptime(date_str, "%Y-%m-%d")
+                date_str = dt.strftime("%a %b %d")
+            except ValueError:
+                pass
+            lines.append(
+                f"{date_str}: ↑{d['high']}{temp_unit} ↓{d['low']}{temp_unit} — "
+                f"{d['daytime_condition']}"
+                f"{f', {d["precip_prob"]}% precip' if d.get('precip_prob') else ''}"
+            )
+        return "\n".join(lines)
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: weather_helper.py <command> [args]")
         print("Commands:")
         print("  current <location>  - Get current weather")
-        print("  forecast <location> - Get 24h forecast")
+        print("  forecast <location> - Get 24h hourly forecast")
+        print("  daily <location>    - Get 10-day daily forecast (high/low)")
         print("  json <location>     - Get raw JSON data")
         sys.exit(1)
     
@@ -279,6 +373,9 @@ def main():
         print(weather.format_summary(data))
     elif command == "forecast":
         data = weather.forecast(location)
+        print(weather.format_summary(data))
+    elif command == "daily":
+        data = weather.daily_forecast(location)
         print(weather.format_summary(data))
     elif command == "json":
         data = weather.current(location)

@@ -1,5 +1,5 @@
 import { parseArgs } from 'node:util';
-import { getGatewayUrl } from '../config.js';
+import { getGatewayUrl } from '../config.ts';
 
 const USAGE = `piracy jobs — manage scheduled jobs
 

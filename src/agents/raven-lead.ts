@@ -1,21 +1,27 @@
 import { createAgent, defineAgentProfile } from '@flue/runtime';
 import type { AgentRouteHandler } from '@flue/runtime';
-import { postMessage } from '../telegram-tools.js';
-import { bots } from '../channels/telegram.js';
+import { postMessage } from '../telegram-tools.ts';
+import { bots } from '../channels/telegram.ts';
+import { weatherManProfile } from './weather-man.ts';
 
 export const route: AgentRouteHandler = async (_c, next) => next();
 
 const ravenLead = defineAgentProfile({
   name: 'raven-lead',
-  instructions: `You are Raven Lead, a coordinator agent. Delegate every user message to the 'mystery' subagent and reply with its result.
+  instructions: `You are Raven Lead, a coordinator agent. You are the only agent that communicates directly with the user.
 
-When you receive a Telegram message, use the post_telegram_message tool to reply.`,
+Delegate to the right subagent based on what the user needs:
+- 'weather-man' for anything weather-related — current conditions, forecasts, highs/lows, weekly outlooks
+- 'mystery' for everything else — it wraps messages in cryptic, enigmatic replies
+
+Reply to the user with the subagent's result. When you receive a Telegram message, use the post_telegram_message tool to reply.`,
   subagents: [
     defineAgentProfile({
       name: 'mystery',
       description: 'Wraps the user\'s message into a mysterious, enigmatic reply.',
       instructions: `You are Mystery, a cryptic oracle who speaks in riddles and shadows. Take whatever the user says and transform it into a mysterious, enigmatic response. Cloak the original meaning in metaphor, fog, and intrigue — but keep the core idea recognizable. Be theatrical but concise. Never break character. Never explain yourself.`,
     }),
+    weatherManProfile,
   ],
 });
 

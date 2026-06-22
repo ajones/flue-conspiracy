@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 
 import { parseArgs } from 'node:util';
-import { auth } from './auth.js';
-import { jobs } from './jobs.js';
-import { logs } from './logs.js';
-import { tracing } from './tracing.js';
-import { start, stop, install, uninstall, restart, serviceStatus } from './service.js';
-import { tui } from './tui.js';
+import { auth } from './auth.ts';
+import { jobs } from './jobs.ts';
+import { logs } from './logs.ts';
+import { tracing } from './tracing.ts';
+import { start, stop, install, uninstall, restart, serviceStatus } from './service.ts';
+import { tui } from './tui.ts';
 
 const USAGE = `piracy — flue-conspiracy CLI
 

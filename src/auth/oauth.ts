@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { loadCodexAuth } from './tokens.js';
+import { loadCodexAuth } from './tokens.ts';
 
 const exec = promisify(execFile);
 

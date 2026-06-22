@@ -1,7 +1,7 @@
-export { loadSkills, getSkillDefinitions, type DiscoveredSkill } from './discover.js';
+export { loadSkills, getSkillDefinitions, type DiscoveredSkill } from './discover.ts';
 export {
   classifySkills,
   formatSkillContext,
   type ClassifierOptions,
   type ClassifiedSkills,
-} from './classify.js';
+} from './classify.ts';

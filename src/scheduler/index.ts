@@ -1,6 +1,6 @@
-export { Scheduler } from './engine.js';
-export type { SchedulerConfig } from './engine.js';
-export { createJobRoutes } from './routes.js';
+export { Scheduler } from './engine.ts';
+export type { SchedulerConfig } from './engine.ts';
+export { createJobRoutes } from './routes.ts';
 export type {
   Schedule,
   ScriptDef,
@@ -9,4 +9,4 @@ export type {
   JobRow,
   JobRunRow,
   ScriptResult,
-} from './types.js';
+} from './types.ts';

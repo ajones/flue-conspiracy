@@ -1,8 +1,8 @@
 import { dispatch } from '@flue/runtime';
-import { computeNextRun } from './cron.js';
-import * as db from './db.js';
-import { runScripts, assemblePrompt } from './scripts.js';
-import type { JobRow } from './types.js';
+import { computeNextRun } from './cron.ts';
+import * as db from './db.ts';
+import { runScripts, assemblePrompt } from './scripts.ts';
+import type { JobRow } from './types.ts';
 
 export interface SchedulerConfig {
   maxConcurrent: number;

@@ -2,8 +2,9 @@ import { dispatch } from '@flue/runtime';
 import { createTelegramChannel, type TelegramChannel, type TelegramConversationRef } from '@flue/telegram';
 import { Api } from 'grammy';
 import type { Message, Update } from 'grammy/types';
-import { getTelegramBots, type TelegramBotConfig } from '../config.js';
-import { classifySkills, formatSkillContext } from '../skills/index.js';
+import { getTelegramBots, type TelegramBotConfig } from '../config.ts';
+import { classifySkills, formatSkillContext } from '../skills/index.ts';
+import { trackAgentInstance } from '../agent-names.ts';
 
 export interface TelegramBot {
   config: TelegramBotConfig;
@@ -18,13 +19,15 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
       const conversation = conversationFromMessage(incoming);
       const text = incoming.text ?? incoming.caption ?? '';
       const result = text
-        ? await classifySkills(text)
+        ? await classifySkills(text).catch(() => ({ enabled: [], disabled: [], reasoning: '' } as const))
         : { enabled: [], disabled: [], reasoning: '' };
       const skillContext = formatSkillContext(result);
 
+      const convKey = channel.conversationKey(conversation);
+      trackAgentInstance(convKey, bot.agent);
       await dispatch({
         agent: bot.agent,
-        id: channel.conversationKey(conversation),
+        id: convKey,
         input: {
           type: 'telegram.message',
           updateId: update.update_id,
@@ -39,9 +42,11 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
       const query = update.callback_query;
       await client.answerCallbackQuery(query.id);
       if (!query.message) return;
+      const cbConvKey = channel.conversationKey(conversationFromMessage(query.message));
+      trackAgentInstance(cbConvKey, bot.agent);
       await dispatch({
         agent: bot.agent,
-        id: channel.conversationKey(conversationFromMessage(query.message)),
+        id: cbConvKey,
         input: {
           type: 'telegram.callback_query',
           updateId: update.update_id,

@@ -1,5 +1,5 @@
 import { CronExpressionParser } from 'cron-parser';
-import type { Schedule } from './types.js';
+import type { Schedule } from './types.ts';
 
 const US_FEDERAL_HOLIDAYS_2026 = [
   '2026-01-01', '2026-01-19', '2026-02-16', '2026-05-25',

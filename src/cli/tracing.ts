@@ -1,12 +1,13 @@
-import { existsSync } from 'node:fs';
+import { existsSync, openSync } from 'node:fs';
 import { mkdir, writeFile, readFile, unlink, chmod, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { spawn, execSync } from 'node:child_process';
-import { loadConfig } from '../config.js';
+import { loadConfig } from '../config.ts';
 
 const PIRACY_DIR = join(homedir(), '.piracy');
 const BIN_DIR = join(PIRACY_DIR, 'bin');
+const LOG_DIR = join(PIRACY_DIR, 'logs');
 const JAEGER_DATA_DIR = join(PIRACY_DIR, 'jaeger');
 const JAEGER_CONFIG_PATH = join(PIRACY_DIR, 'jaeger.yaml');
 const PID_FILE = join(PIRACY_DIR, 'jaeger.pid');
@@ -76,7 +77,6 @@ async function writeJaegerConfig(): Promise<void> {
             keys: ${keysDir}
             values: ${valuesDir}
           ephemeral: false
-          span_store_ttl: ${retentionHours}h
   jaeger_query:
     storage:
       traces: main_store
@@ -130,19 +130,31 @@ export async function startJaeger(): Promise<void> {
 
   await writeJaegerConfig();
 
+  await mkdir(LOG_DIR, { recursive: true });
+  const outFd = openSync(join(LOG_DIR, 'jaeger-stdout.log'), 'a');
+  const errFd = openSync(join(LOG_DIR, 'jaeger-stderr.log'), 'a');
+
   const child = spawn(JAEGER_BIN, ['--config', JAEGER_CONFIG_PATH], {
-    stdio: 'ignore',
+    stdio: ['ignore', outFd, errFd],
     detached: true,
   });
 
   child.unref();
 
-  if (child.pid) {
-    await mkdir(PIRACY_DIR, { recursive: true });
-    await writeFile(PID_FILE, String(child.pid));
-  } else {
+  if (!child.pid) {
     console.error('Failed to start trace collector');
+    return;
   }
+
+  await new Promise((r) => setTimeout(r, 500));
+  try {
+    process.kill(child.pid, 0);
+  } catch {
+    console.error(`Jaeger exited immediately. Check ${join(LOG_DIR, 'jaeger-stderr.log')}`);
+    return;
+  }
+
+  await writeFile(PID_FILE, String(child.pid));
 }
 
 export async function stopJaeger(): Promise<void> {
@@ -171,7 +183,7 @@ export async function tracing(args: string[]): Promise<void> {
 
   if (sub === 'open') {
     if (!(await isRunning())) {
-      console.error('Gateway is not running. Start it first with: piracy start');
+      console.error('Jaeger is not running. Start it first with: piracy start');
       process.exit(1);
     }
     return openUI();

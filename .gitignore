@@ -6,3 +6,4 @@ bin
 data
 .data
 .flue-vite
+__pycache__

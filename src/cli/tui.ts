@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { getGatewayUrl } from '../config.js';
+import { getGatewayUrl } from '../config.ts';
 
 const BASE_URL = getGatewayUrl();
 

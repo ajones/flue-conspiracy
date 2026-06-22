@@ -3,8 +3,8 @@ import { existsSync, mkdirSync, openSync, writeSync, closeSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { execSync, spawn } from 'node:child_process';
-import { loadConfig } from '../config.js';
-import { startJaeger, stopJaeger } from './tracing.js';
+import { loadConfig } from '../config.ts';
+import { startJaeger, stopJaeger } from './tracing.ts';
 
 const LABEL = 'com.piracy.gateway';
 const JAEGER_LABEL = 'com.piracy.jaeger';

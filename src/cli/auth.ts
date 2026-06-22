@@ -1,5 +1,5 @@
-import { login } from '../auth/oauth.js';
-import { loadCodexAuth } from '../auth/tokens.js';
+import { login } from '../auth/oauth.ts';
+import { loadCodexAuth } from '../auth/tokens.ts';
 
 const AUTH_USAGE = `piracy auth — manage Codex credentials
 

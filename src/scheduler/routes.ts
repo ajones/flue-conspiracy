@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 import * as v from 'valibot';
-import { CreateJobInput, UpdateJobInput } from './types.js';
-import { computeNextRun } from './cron.js';
-import * as db from './db.js';
-import type { Scheduler } from './engine.js';
+import { CreateJobInput, UpdateJobInput } from './types.ts';
+import { computeNextRun } from './cron.ts';
+import * as db from './db.ts';
+import type { Scheduler } from './engine.ts';
 
 export function createJobRoutes(scheduler: Scheduler): Hono {
   const app = new Hono();
