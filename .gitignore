@@ -3,3 +3,4 @@ dist/
 .env
 piracy.json5
 bin
+data

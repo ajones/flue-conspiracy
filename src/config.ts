@@ -25,6 +25,7 @@ export interface PiracyConfig {
   telegram?: TelegramBotConfig[];
   bluebubbles?: BlueBubblesConfig;
   skills?: SkillsConfig;
+  traceRetentionDays?: number;
 }
 
 const CONFIG_PATH = join(import.meta.dirname, '..', 'piracy.json5');

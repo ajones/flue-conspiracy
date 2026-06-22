@@ -4,13 +4,18 @@ import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { execSync, spawn } from 'node:child_process';
 import { loadConfig } from '../config.js';
+import { startJaeger, stopJaeger } from './tracing.js';
 
 const LABEL = 'com.piracy.gateway';
+const JAEGER_LABEL = 'com.piracy.jaeger';
 const PLIST_PATH = join(homedir(), 'Library', 'LaunchAgents', `${LABEL}.plist`);
+const JAEGER_PLIST_PATH = join(homedir(), 'Library', 'LaunchAgents', `${JAEGER_LABEL}.plist`);
 const PROJECT_ROOT = resolve(import.meta.dirname, '..', '..');
 const PIRACY_DIR = join(homedir(), '.piracy');
 const LOG_DIR = join(PIRACY_DIR, 'logs');
 const PID_FILE = join(PIRACY_DIR, 'gateway.pid');
+const JAEGER_BIN = join(PIRACY_DIR, 'bin', 'jaeger');
+const JAEGER_CONFIG = join(PIRACY_DIR, 'jaeger.yaml');
 
 function npxPath(): string {
   try {
@@ -76,6 +81,8 @@ export async function start() {
     return;
   }
 
+  await startJaeger();
+
   mkdirSync(LOG_DIR, { recursive: true });
 
   // Atomic PID file creation to prevent races between concurrent `start` calls
@@ -124,13 +131,38 @@ export async function stop() {
   }
 
   try {
-    // Kill the entire process group so children don't outlive the leader
     process.kill(-pid, 'SIGTERM');
     console.log(`Gateway stopped (pid ${pid})`);
   } catch {
     console.log('Gateway was not running.');
   }
   await unlink(PID_FILE).catch(() => {});
+  await stopJaeger();
+}
+
+function buildJaegerPlist(): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>${JAEGER_LABEL}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${JAEGER_BIN}</string>
+    <string>--config</string>
+    <string>${JAEGER_CONFIG}</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>${join(LOG_DIR, 'jaeger-stdout.log')}</string>
+  <key>StandardErrorPath</key>
+  <string>${join(LOG_DIR, 'jaeger-stderr.log')}</string>
+</dict>
+</plist>`;
 }
 
 export async function install() {
@@ -140,15 +172,26 @@ export async function install() {
   }
 
   mkdirSync(LOG_DIR, { recursive: true });
+
+  // Ensure Jaeger is downloaded and config is written
+  await startJaeger();
+  await stopJaeger();
+
   const plist = buildPlist();
   await writeFile(PLIST_PATH, plist);
   console.log(`Wrote ${PLIST_PATH}`);
 
+  const jaegerPlist = buildJaegerPlist();
+  await writeFile(JAEGER_PLIST_PATH, jaegerPlist);
+  console.log(`Wrote ${JAEGER_PLIST_PATH}`);
+
   try {
+    execSync(`launchctl bootstrap gui/$(id -u) "${JAEGER_PLIST_PATH}"`, { stdio: 'inherit' });
     execSync(`launchctl bootstrap gui/$(id -u) "${PLIST_PATH}"`, { stdio: 'inherit' });
-    console.log('Service installed and started.');
+    console.log('Services installed and started.');
   } catch {
-    console.log('Plist written. Load it with:');
+    console.log('Plists written. Load them with:');
+    console.log(`  launchctl bootstrap gui/$(id -u) "${JAEGER_PLIST_PATH}"`);
     console.log(`  launchctl bootstrap gui/$(id -u) "${PLIST_PATH}"`);
   }
 
@@ -156,20 +199,25 @@ export async function install() {
 }
 
 export async function uninstall() {
-  if (!existsSync(PLIST_PATH)) {
+  if (!existsSync(PLIST_PATH) && !existsSync(JAEGER_PLIST_PATH)) {
     console.log('Service is not installed.');
     return;
   }
 
   try {
     execSync(`launchctl bootout gui/$(id -u)/${LABEL}`, { stdio: 'inherit' });
-    console.log('Service stopped.');
+  } catch {
+    // already unloaded
+  }
+  try {
+    execSync(`launchctl bootout gui/$(id -u)/${JAEGER_LABEL}`, { stdio: 'inherit' });
   } catch {
     // already unloaded
   }
 
-  await unlink(PLIST_PATH);
-  console.log(`Removed ${PLIST_PATH}`);
+  if (existsSync(PLIST_PATH)) await unlink(PLIST_PATH);
+  if (existsSync(JAEGER_PLIST_PATH)) await unlink(JAEGER_PLIST_PATH);
+  console.log('Services removed.');
 }
 
 export async function restart() {

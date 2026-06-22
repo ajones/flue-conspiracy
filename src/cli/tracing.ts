@@ -2,14 +2,18 @@ import { existsSync } from 'node:fs';
 import { mkdir, writeFile, readFile, unlink, chmod, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { spawn } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
+import { loadConfig } from '../config.js';
 
 const PIRACY_DIR = join(homedir(), '.piracy');
 const BIN_DIR = join(PIRACY_DIR, 'bin');
+const JAEGER_DATA_DIR = join(PIRACY_DIR, 'jaeger');
+const JAEGER_CONFIG_PATH = join(PIRACY_DIR, 'jaeger.yaml');
 const PID_FILE = join(PIRACY_DIR, 'jaeger.pid');
 const JAEGER_BIN = join(BIN_DIR, 'jaeger');
 const UI_URL = 'http://localhost:16686';
 const JAEGER_VERSION = '2.19.0';
+const DEFAULT_RETENTION_DAYS = 7;
 
 function getPlatformAsset(): string {
   const os = process.platform === 'darwin' ? 'darwin' : 'linux';
@@ -29,7 +33,6 @@ async function download(): Promise<void> {
   const tarball = join(BIN_DIR, asset);
   await Bun.write(tarball, await res.arrayBuffer());
 
-  // Extract to a temp dir, then find and move the jaeger binary
   const tmpDir = join(BIN_DIR, '_extract');
   await mkdir(tmpDir, { recursive: true });
   const proc = Bun.spawn(['tar', 'xzf', tarball, '-C', tmpDir], {
@@ -38,7 +41,6 @@ async function download(): Promise<void> {
   });
   await proc.exited;
 
-  // Find the jaeger binary wherever it landed
   const find = Bun.spawn(['find', tmpDir, '-name', 'jaeger', '-type', 'f'], {
     stdout: 'pipe',
   });
@@ -48,9 +50,63 @@ async function download(): Promise<void> {
   await rename(found[0], JAEGER_BIN);
   await chmod(JAEGER_BIN, 0o755);
 
-  // Cleanup
   Bun.spawn(['rm', '-rf', tmpDir, tarball], { stdout: 'ignore', stderr: 'ignore' });
   console.log(`Installed to ${JAEGER_BIN}`);
+}
+
+function getRetentionHours(): number {
+  const config = loadConfig();
+  const days = config.traceRetentionDays ?? DEFAULT_RETENTION_DAYS;
+  return days * 24;
+}
+
+async function writeJaegerConfig(): Promise<void> {
+  const retentionHours = getRetentionHours();
+  const keysDir = join(JAEGER_DATA_DIR, 'keys');
+  const valuesDir = join(JAEGER_DATA_DIR, 'values');
+  await mkdir(keysDir, { recursive: true });
+  await mkdir(valuesDir, { recursive: true });
+
+  const config = `extensions:
+  jaeger_storage:
+    backends:
+      main_store:
+        badger:
+          directories:
+            keys: ${keysDir}
+            values: ${valuesDir}
+          ephemeral: false
+          span_store_ttl: ${retentionHours}h
+  jaeger_query:
+    storage:
+      traces: main_store
+      traces_archive: main_store
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+
+exporters:
+  jaeger_storage_exporter:
+    trace_storage: main_store
+
+service:
+  extensions: [jaeger_storage, jaeger_query]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [jaeger_storage_exporter]
+`;
+
+  await writeFile(JAEGER_CONFIG_PATH, config);
 }
 
 async function isRunning(): Promise<boolean> {
@@ -65,69 +121,62 @@ async function isRunning(): Promise<boolean> {
   }
 }
 
-async function start(): Promise<void> {
-  if (await isRunning()) {
-    console.log(`Trace viewer already running at ${UI_URL}`);
-    return;
-  }
+export async function startJaeger(): Promise<void> {
+  if (await isRunning()) return;
 
   if (!existsSync(JAEGER_BIN)) {
     await download();
   }
 
-  await mkdir(PIRACY_DIR, { recursive: true });
+  await writeJaegerConfig();
 
-  const child = spawn(JAEGER_BIN, [], {
+  const child = spawn(JAEGER_BIN, ['--config', JAEGER_CONFIG_PATH], {
     stdio: 'ignore',
     detached: true,
-    env: { ...process.env, SPAN_STORAGE_TYPE: 'memory' },
   });
 
   child.unref();
 
   if (child.pid) {
+    await mkdir(PIRACY_DIR, { recursive: true });
     await writeFile(PID_FILE, String(child.pid));
-    console.log(`Trace viewer started at ${UI_URL} (pid ${child.pid})`);
   } else {
-    console.error('Failed to start trace viewer');
-    process.exit(1);
+    console.error('Failed to start trace collector');
   }
 }
 
-async function stop(): Promise<void> {
-  if (!existsSync(PID_FILE)) {
-    console.log('Trace viewer is not running.');
-    return;
-  }
+export async function stopJaeger(): Promise<void> {
+  if (!existsSync(PID_FILE)) return;
 
   const pid = parseInt(await readFile(PID_FILE, 'utf-8'), 10);
   try {
     process.kill(pid, 'SIGTERM');
-    console.log(`Trace viewer stopped (pid ${pid})`);
   } catch {
-    console.log('Trace viewer was not running.');
+    // already gone
   }
   await unlink(PID_FILE).catch(() => {});
 }
 
-async function status(): Promise<void> {
-  if (await isRunning()) {
-    const pid = parseInt(await readFile(PID_FILE, 'utf-8'), 10);
-    console.log(`Trace viewer running at ${UI_URL} (pid ${pid})`);
+function openUI(): void {
+  if (process.platform === 'darwin') {
+    execSync(`open ${UI_URL}`);
   } else {
-    console.log('Trace viewer is not running.');
+    execSync(`xdg-open ${UI_URL}`);
   }
+  console.log(`Opened ${UI_URL}`);
 }
 
 export async function tracing(args: string[]): Promise<void> {
   const sub = args[0];
 
-  if (sub === 'start') return start();
-  if (sub === 'stop') return stop();
-  if (sub === 'status') return status();
+  if (sub === 'open') {
+    if (!(await isRunning())) {
+      console.error('Gateway is not running. Start it first with: piracy start');
+      process.exit(1);
+    }
+    return openUI();
+  }
 
   console.log(`Usage:
-  piracy tracing start    Start the local trace viewer
-  piracy tracing stop     Stop the trace viewer
-  piracy tracing status   Check if the trace viewer is running`);
+  piracy tracing open     Open the trace viewer in the browser`);
 }

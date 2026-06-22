@@ -23,9 +23,7 @@ Usage:
   piracy logs               Show recent runs
   piracy logs -f            Tail runs in real time
   piracy logs <runId>       Stream events for a specific run
-  piracy tracing start      Start the local trace viewer
-  piracy tracing stop       Stop the trace viewer
-  piracy tracing status     Check if the trace viewer is running
+  piracy tracing open       Open the trace viewer in the browser
 
 Options:
   --help, -h                Show this help message
