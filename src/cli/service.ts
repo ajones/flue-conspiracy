@@ -27,6 +27,7 @@ function npxPath(): string {
 
 function buildPlist(): string {
   const npx = npxPath();
+  const { port } = loadConfig();
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -39,6 +40,8 @@ function buildPlist(): string {
     <string>${npx}</string>
     <string>flue</string>
     <string>dev</string>
+    <string>--port</string>
+    <string>${port}</string>
   </array>
   <key>WorkingDirectory</key>
   <string>${PROJECT_ROOT}</string>
@@ -226,18 +229,38 @@ export async function restart() {
 }
 
 export async function serviceStatus() {
+  const { port } = loadConfig();
+
+  // Launch agent status
   try {
     const output = execSync(`launchctl print gui/$(id -u)/${LABEL} 2>&1`, { encoding: 'utf-8' });
     const stateLine = output.split('\n').find((l) => l.includes('state'));
-    console.log(`Service: installed`);
-    if (stateLine) console.log(stateLine.trim());
-    console.log(`Plist: ${PLIST_PATH}`);
-    console.log(`Logs: ${LOG_DIR}/`);
+    console.log(`Launch agent: installed`);
+    if (stateLine) console.log(`  ${stateLine.trim()}`);
+    console.log(`  Plist: ${PLIST_PATH}`);
   } catch {
     if (existsSync(PLIST_PATH)) {
-      console.log('Service: installed but not loaded');
+      console.log('Launch agent: installed but not loaded');
     } else {
-      console.log('Service: not installed');
+      console.log('Launch agent: not installed');
     }
   }
+
+  // Gateway process status
+  const pid = await isRunning();
+  if (pid) {
+    console.log(`Gateway process: running (pid ${pid})`);
+  } else {
+    console.log('Gateway process: not running');
+  }
+
+  // HTTP health check
+  try {
+    const res = await fetch(`http://localhost:${port}/health`, { signal: AbortSignal.timeout(2000) });
+    console.log(`Gateway HTTP: responding on port ${port} (${res.status})`);
+  } catch {
+    console.log(`Gateway HTTP: not responding on port ${port}`);
+  }
+
+  console.log(`Logs: ${LOG_DIR}/`);
 }

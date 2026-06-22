@@ -2,6 +2,7 @@
 
 import { parseArgs } from 'node:util';
 import { auth } from './auth.js';
+import { jobs } from './jobs.js';
 import { logs } from './logs.js';
 import { tracing } from './tracing.js';
 import { start, stop, install, uninstall, restart, serviceStatus } from './service.js';
@@ -17,6 +18,13 @@ Usage:
   piracy install            Install as a launchd service
   piracy uninstall          Remove the launchd service
   piracy status             Show service status
+  piracy jobs list          List scheduled jobs
+  piracy jobs show <name>   Show job details + recent runs
+  piracy jobs enable <name> Enable a job
+  piracy jobs disable <name> Disable a job
+  piracy jobs delete <name> Delete a job
+  piracy jobs trigger <name> Trigger a manual run
+  piracy jobs history       Show execution history
   piracy auth login         Authenticate via Codex (opens browser)
   piracy auth status        Show current auth status
   piracy auth logout        Clear stored credentials
@@ -49,6 +57,10 @@ async function main() {
   if (command === 'install') return install();
   if (command === 'uninstall') return uninstall();
   if (command === 'status') return serviceStatus();
+
+  if (command === 'jobs') {
+    return jobs(process.argv.slice(3));
+  }
 
   if (command === 'auth') {
     return auth(rest[0]);

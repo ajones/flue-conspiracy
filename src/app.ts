@@ -4,10 +4,13 @@ import { flue } from '@flue/runtime/routing';
 import { Hono } from 'hono';
 import { getAccessToken } from './auth/tokens.js';
 import { bots, startPolling } from './channels/telegram.js';
+import { Scheduler, createJobRoutes } from './scheduler/index.js';
+import { getSchedulerConfig } from './config.js';
 
 const token = await getAccessToken();
 registerProvider('openai-codex', { apiKey: token });
 
+const scheduler = new Scheduler(getSchedulerConfig());
 const app = new Hono();
 
 app.get('/api/runs', async (c) => {
@@ -29,6 +32,7 @@ for (const bot of bots.slice(1)) {
   }
 }
 
+app.route('/api', createJobRoutes(scheduler));
 app.route('/', flue());
 
 app.onError((err, c) => {
@@ -36,6 +40,7 @@ app.onError((err, c) => {
   return c.json({ error: 'internal server error' }, 500);
 });
 
+scheduler.start();
 startPolling();
 
 export default app;

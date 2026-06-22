@@ -20,11 +20,19 @@ export interface SkillsConfig {
   overrides?: Record<string, boolean>;
 }
 
+export interface SchedulerConfig {
+  maxConcurrent?: number;
+  runRetentionDays?: number;
+  defaultTimezone?: string;
+  catchUpMissed?: boolean;
+}
+
 export interface PiracyConfig {
   port?: number;
   telegram?: TelegramBotConfig[];
   bluebubbles?: BlueBubblesConfig;
   skills?: SkillsConfig;
+  scheduler?: SchedulerConfig;
   traceRetentionDays?: number;
 }
 
@@ -63,6 +71,11 @@ export function requireBlueBubbles(): BlueBubblesConfig {
     throw new Error('bluebubbles.apiKey and bluebubbles.serverUrl are required in piracy.json5');
   }
   return config.bluebubbles;
+}
+
+export function getSchedulerConfig(): SchedulerConfig {
+  const config = loadConfig();
+  return config.scheduler ?? {};
 }
 
 export function getGatewayUrl(): string {

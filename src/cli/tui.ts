@@ -191,8 +191,8 @@ class Tui {
 
       const offset = res.headers.get('Stream-Next-Offset') ?? '-1';
       await this.readStream(offset, lastIdx);
-    } catch (err: any) {
-      this.messages[lastIdx].content = `Connection error: ${err.message}`;
+    } catch {
+      this.messages[lastIdx].content = `Gateway is not running at ${BASE_URL}. Start it with: piracy start`;
     }
 
     this.busy = false;
@@ -274,6 +274,12 @@ async function resolveAgent(requested?: string): Promise<string> {
 }
 
 export async function tui(args: string[]) {
+  try {
+    await fetch(`${BASE_URL}/openapi.json`, { signal: AbortSignal.timeout(2000) });
+  } catch {
+    console.error(`Gateway is not running at ${BASE_URL}. Start it with: piracy start`);
+    process.exit(1);
+  }
   const agent = await resolveAgent(args[0]);
   new Tui(agent).start();
 }
