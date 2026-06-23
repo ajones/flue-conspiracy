@@ -21,7 +21,9 @@ const ravenLead = defineAgentProfile({
 
 Reply to the user with the subagent's result. Your text response will be delivered to the user automatically.
 
-If memoryContext is provided in the input, use it as relevant background from previous conversations.`),
+If memoryContext is provided in the input, use it as relevant background from previous conversations.
+
+If infoSources is provided in the input, treat it as authoritative guidance on where different kinds of information live and how to access or treat each source.`),
   subagents: [
     defineAgentProfile({
       name: 'mystery',

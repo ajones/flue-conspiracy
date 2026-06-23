@@ -7,6 +7,8 @@ import { classifySkills, formatSkillContext, type ClassifiedSkills } from '../sk
 import { trackAgentInstance } from '../agent-names.ts';
 
 import { isMemoryAvailable, recallMemory } from '../memory/index.ts';
+import { loadInfoSources } from '../info-sources.ts';
+import { loadPendingRequests } from '../pending-requests.ts';
 import { dispatchAndCollect } from '../dispatch-collect.ts';
 import { createLogger } from '../log.ts';
 
@@ -78,6 +80,19 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
             }
           }
 
+          const [infoSources, pendingRequests] = await Promise.all([
+            loadInfoSources().catch(() => null),
+            loadPendingRequests().catch(() => null),
+          ]);
+          if (infoSources) {
+            tgLog.debug('Info sources loaded', { length: infoSources.length });
+            span.addEvent('info_sources.loaded', { 'raven.info_sources.length': infoSources.length });
+          }
+          if (pendingRequests) {
+            tgLog.debug('Pending requests loaded', { length: pendingRequests.length });
+            span.addEvent('pending_requests.loaded', { 'raven.pending_requests.length': pendingRequests.length });
+          }
+
           tgLog.debug('Dispatching to agent', { agent: bot.agent, convKey });
           span.addEvent('dispatching', {
             'raven.agent': bot.agent,
@@ -100,6 +115,8 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
               chatId: incoming.chat.id,
               ...(skillContext ? { skillContext } : {}),
               ...(memoryContext ? { memoryContext } : {}),
+              ...(infoSources ? { infoSources } : {}),
+              ...(pendingRequests ? { pendingRequests } : {}),
             },
           }, otelContext.active());
           if (reply.text) {
