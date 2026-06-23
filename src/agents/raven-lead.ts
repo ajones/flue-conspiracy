@@ -1,7 +1,5 @@
 import { createAgent, defineAgentProfile } from '@flue/runtime';
 import type { AgentRouteHandler } from '@flue/runtime';
-import { postMessage } from '../telegram-tools.ts';
-import { bots } from '../channels/telegram.ts';
 import { weatherManProfile } from './weather-man.ts';
 import { homeAssistantProfile } from './home-assistant.ts';
 import { appleNotesTools } from '../tools/apple-notes.ts';
@@ -21,7 +19,7 @@ const ravenLead = defineAgentProfile({
 - Use the ical_* tools directly for calendar queries — upcoming events, date range lookups, fuzzy search across calendars. Always sync before querying if freshness matters.
 - 'mystery' for everything else — it wraps messages in cryptic, enigmatic replies
 
-Reply to the user with the subagent's result. When you receive a Telegram message, use the post_telegram_message tool to reply.
+Reply to the user with the subagent's result. Your text response will be delivered to the user automatically.
 
 If memoryContext is provided in the input, use it as relevant background from previous conversations.`),
   subagents: [
@@ -35,23 +33,7 @@ If memoryContext is provided in the input, use it as relevant background from pr
   ],
 });
 
-export default createAgent(({ id }) => {
-  const tools: ReturnType<typeof import('@flue/runtime').defineTool>[] = [];
-
-  if (id.startsWith('telegram:')) {
-    const bot = bots.find((b) => {
-      try {
-        b.channel.parseConversationKey(id);
-        return true;
-      } catch {
-        return false;
-      }
-    }) ?? bots[0];
-    if (bot) {
-      tools.push(postMessage(bot.client, bot.channel.parseConversationKey(id)));
-    }
-  }
-
+export default createAgent(() => {
   const wsConfig = getWorkspaceConfig();
   if (wsConfig.enabled !== false) {
     resolveAgentWorkspace(wsConfig, 'raven-lead');
@@ -60,6 +42,6 @@ export default createAgent(({ id }) => {
   return {
     profile: ravenLead,
     model: 'openai-codex/gpt-5.4-mini',
-    tools: [...tools, ...appleNotesTools, ...icalReaderTools],
+    tools: [...appleNotesTools, ...icalReaderTools],
   };
 });

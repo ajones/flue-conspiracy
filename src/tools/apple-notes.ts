@@ -54,7 +54,8 @@ const getNoteContent = defineTool({
     required: ['note'],
     additionalProperties: false,
   },
-  async execute({ note, lines }: { note: string; lines?: string }) {
+  async execute(input: Record<string, any>) {
+    const { note, lines } = input as { note: string; lines?: string };
     log.info('apple_notes_get', { note, lines });
     const args = [note];
     if (lines) args.push(lines);
@@ -82,7 +83,8 @@ const appendToNote = defineTool({
     required: ['note', 'text'],
     additionalProperties: false,
   },
-  async execute({ note, text }: { note: string; text: string }) {
+  async execute(input: Record<string, any>) {
+    const { note, text } = input as { note: string; text: string };
     log.info('apple_notes_append', { note, textLength: text.length });
     const result = await runScript('append-to-note.scpt', [note, text]);
     log.info('apple_notes_append done', { note });
@@ -112,7 +114,8 @@ const replaceInNote = defineTool({
     required: ['note', 'target', 'replacement'],
     additionalProperties: false,
   },
-  async execute({ note, target, replacement }: { note: string; target: string; replacement: string }) {
+  async execute(input: Record<string, any>) {
+    const { note, target, replacement } = input as { note: string; target: string; replacement: string };
     log.info('apple_notes_replace', { note, target });
     const result = await runScript('replace-line-in-note.scpt', [note, target, replacement]);
     log.info('apple_notes_replace done', { note });
@@ -138,7 +141,8 @@ const createNote = defineTool({
     required: ['title', 'body'],
     additionalProperties: false,
   },
-  async execute({ title, body }: { title: string; body: string }) {
+  async execute(input: Record<string, any>) {
+    const { title, body } = input as { title: string; body: string };
     log.info('apple_notes_create', { title });
     const result = await runScript('create-note-in-shared-with-raven.scpt', [title, body]);
     log.info('apple_notes_create done', { title });
@@ -164,7 +168,8 @@ const setNoteBody = defineTool({
     required: ['note', 'body'],
     additionalProperties: false,
   },
-  async execute({ note, body }: { note: string; body: string }) {
+  async execute(input: Record<string, any>) {
+    const { note, body } = input as { note: string; body: string };
     log.info('apple_notes_set_body', { note, bodyLength: body.length });
     const result = await runScript('set-note-body.scpt', [note, body]);
     log.info('apple_notes_set_body done', { note });

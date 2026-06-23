@@ -4,18 +4,21 @@ import { createLogger } from '../log.js';
 const log = createLogger('memory');
 const DEFAULT_URL = 'http://localhost:3111';
 
+const MAX_RECALL = 5;
+
 export async function recallMemory(
   config: MemoryConfig,
   scopeKey: string,
   query: string,
-  limit = 5,
+  limit = MAX_RECALL,
 ): Promise<string | null> {
   const url = config.url ?? DEFAULT_URL;
+  const cappedLimit = Math.min(limit, MAX_RECALL);
   try {
     const res = await fetch(`${url}/agentmemory/smart-search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, limit }),
+      body: JSON.stringify({ query, limit: cappedLimit }),
     });
     if (!res.ok) {
       log.warn('Recall request failed', { status: res.status, scopeKey });
@@ -26,6 +29,7 @@ export async function recallMemory(
     if (!Array.isArray(results) || results.length === 0) return null;
     log.debug('Recalled memories', { count: results.length, scopeKey });
     return results
+      .slice(0, MAX_RECALL)
       .map((r: any) => r.title ?? r.content ?? r.text ?? '')
       .filter(Boolean)
       .join('\n');

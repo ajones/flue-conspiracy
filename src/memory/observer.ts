@@ -6,6 +6,32 @@ import { createLogger } from '../log.js';
 
 const log = createLogger('memory');
 
+const MAX_MEMORIES_PER_SAVE = 5;
+
+const THINKING_PATTERNS = [
+  /<thinking[\s>][\s\S]*?<\/thinking>/gi,
+  /<thinkingSignature[\s>][\s\S]*?<\/thinkingSignature>/gi,
+  /thinkingSignature\s*[:=]\s*"[^"]*"/gi,
+  /<\|thinking\|>[\s\S]*?<\|\/thinking\|>/gi,
+];
+
+function stripThinkingContent(text: string): string {
+  let cleaned = text;
+  for (const pattern of THINKING_PATTERNS) {
+    cleaned = cleaned.replace(pattern, '');
+  }
+  return cleaned.replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function extractAssistantText(msg: any): string | null {
+  if (typeof msg.content === 'string') return msg.content;
+  if (!Array.isArray(msg.content)) return null;
+  return msg.content
+    .filter((c: any) => c.type === 'text')
+    .map((c: any) => c.text)
+    .join(' ') || null;
+}
+
 export function registerMemoryObserver() {
   observe((event) => {
     if (event.type !== 'agent_end') return;
@@ -35,19 +61,18 @@ export function registerMemoryObserver() {
           // skip unparseable dispatch inputs
         }
       } else if (msg.role === 'assistant') {
-        const text = typeof msg.content === 'string'
-          ? msg.content
-          : Array.isArray(msg.content)
-            ? msg.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join(' ')
-            : null;
+        const raw = extractAssistantText(msg);
+        if (!raw) continue;
+        const text = stripThinkingContent(raw);
         if (text) parts.push(`Assistant: ${text}`);
       }
     }
 
-    if (parts.length === 0) return;
+    const trimmed = parts.slice(-MAX_MEMORIES_PER_SAVE);
+    if (trimmed.length === 0) return;
 
-    log.debug('Saving conversation memory', { agent: agentName, scopeKey, messageCount: parts.length });
-    saveMemory(memConfig, scopeKey, parts.join('\n')).catch((err) => {
+    log.debug('Saving conversation memory', { agent: agentName, scopeKey, messageCount: trimmed.length });
+    saveMemory(memConfig, scopeKey, trimmed.join('\n')).catch((err) => {
       log.warn('Failed to save memory', { scopeKey, error: String(err) });
     });
   });

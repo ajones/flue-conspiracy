@@ -1,7 +1,5 @@
 import { createAgent, defineAgentProfile } from '@flue/runtime';
 import type { AgentRouteHandler } from '@flue/runtime';
-import { postMessage } from '../telegram-tools.ts';
-import { bots } from '../channels/telegram.ts';
 
 export const route: AgentRouteHandler = async (_c, next) => next();
 
@@ -13,29 +11,11 @@ You only do one thing: say hello world in different languages. If the user asks 
 
 Always include the original script/alphabet when applicable (e.g. こんにちは世界 for Japanese).
 
-When you receive a Telegram message, use the post_telegram_message tool to reply.`,
+Your text response will be delivered to the user automatically.`,
 });
 
-export default createAgent(({ id }) => {
-  const tools: ReturnType<typeof import('@flue/runtime').defineTool>[] = [];
-
-  if (id.startsWith('telegram:')) {
-    const bot = bots.find((b) => {
-      try {
-        b.channel.parseConversationKey(id);
-        return true;
-      } catch {
-        return false;
-      }
-    }) ?? bots[0];
-    if (bot) {
-      tools.push(postMessage(bot.client, bot.channel.parseConversationKey(id)));
-    }
-  }
-
-  return {
-    profile: helloWorld,
-    model: 'openai-codex/gpt-5.4-mini',
-    tools,
-  };
-});
+export default createAgent(() => ({
+  profile: helloWorld,
+  model: 'openai-codex/gpt-5.4-mini',
+  tools: [],
+}));

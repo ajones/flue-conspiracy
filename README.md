@@ -1,6 +1,6 @@
 # flue-conspiracy
 
-Agent service built on the [Flue framework](https://github.com/withastro/flue) with OpenAI Codex OAuth support and refresh token management. Chat interface uses the Flue TUI. iMessage integration via the BlueBubbles API.
+Agent service built on the [Flue framework](https://github.com/withastro/flue) with OpenAI Codex OAuth support and refresh token management. Chat interface uses the Flue TUI. iMessage integration via the local `imsg` CLI.
 
 ## Stack
 
@@ -8,7 +8,7 @@ Agent service built on the [Flue framework](https://github.com/withastro/flue) w
 - **Language**: TypeScript
 - **Auth**: OpenAI Codex (reads from `~/.codex/auth.json`, managed by `codex login`)
 - **UI**: Flue TUI (built-in terminal interface — no custom chat UI)
-- **Messaging**: BlueBubbles API (iMessage channel)
+- **Messaging**: local `imsg` CLI (iMessage channel)
 
 ## Implementation Phases
 
@@ -40,13 +40,13 @@ Deliverables:
 - Skills packages for reusable expertise
 - Integration tests for tool execution
 
-### Phase 4 — iMessage via BlueBubbles
+### Phase 4 — iMessage via `imsg`
 
-Connect the agent to iMessage using the BlueBubbles API as a Flue channel. Users can interact with the agent over iMessage.
+Connect the agent to iMessage using the local `imsg` CLI as the Flue channel backend. Users can interact with the agent over iMessage.
 
 Deliverables:
-- `src/channels/imessage.ts` — BlueBubbles channel adapter
-- Webhook/polling setup for incoming messages
+- `src/channels/imessage.ts` — `imsg` channel adapter
+- Watch-based setup for incoming messages
 - Outbound message delivery
 - End-to-end test: send/receive iMessage through the agent
 
@@ -72,9 +72,12 @@ All service config lives in `raven.json5` (JSON5 with comments):
       agent: "hello-world",       // agent in src/agents/
     },
   ],
-  // bluebubbles: {               // Phase 4
-  //   apiKey: "",
-  //   serverUrl: "",
+  // imessage: {                  // Phase 4
+  //   db: "/Users/raven/Library/Messages/chat.db",
+  //   conversations: [
+  //     { identifier: "+15127407713", agent: "raven-lead" },
+  //     { identifier: "bc2201f817d34f7da609764bf73c4ffb", agent: "raven-lead" },
+  //   ],
   // },
 }
 ```
@@ -109,7 +112,7 @@ flue-conspiracy/
 │   │   ├── oauth.ts          # OAuth 2.0 flow (Phase 1)
 │   │   └── tokens.ts         # token storage & refresh (Phase 1)
 │   └── channels/
-│       └── imessage.ts       # BlueBubbles adapter (Phase 4)
+│       └── imessage.ts       # imsg adapter (Phase 4)
 ├── flue.config.ts            # flue framework config
 ├── .env.example
 └── package.json

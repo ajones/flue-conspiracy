@@ -10,9 +10,17 @@ export interface TelegramBotConfig {
   webhookSecret?: string;
 }
 
-export interface BlueBubblesConfig {
-  apiKey: string;
-  serverUrl: string;
+export interface ImessageConfig {
+  db?: string;
+  conversations?: ImessageConversationConfig[];
+}
+
+export interface ImessageConversationConfig {
+  agent: string;
+  chatId?: number;
+  identifier?: string;
+  guid?: string;
+  name?: string;
 }
 
 export interface SkillsConfig {
@@ -47,7 +55,7 @@ export interface WorkspaceConfig {
 export interface RavenConfig {
   port?: number;
   telegram?: TelegramBotConfig[];
-  bluebubbles?: BlueBubblesConfig;
+  imessage?: ImessageConfig;
   skills?: SkillsConfig;
   scheduler?: SchedulerConfig;
   homeassistant?: HomeAssistantConfig;
@@ -72,6 +80,15 @@ export function getTelegramBots(): TelegramBotConfig[] {
   return config.telegram ?? [];
 }
 
+export function getImessageConfig(): ImessageConfig {
+  const config = loadConfig();
+  return config.imessage ?? {};
+}
+
+export function getImessageConversations(): ImessageConversationConfig[] {
+  return getImessageConfig().conversations ?? [];
+}
+
 export function getSkillsConfig(): SkillsConfig {
   const config = loadConfig();
   return config.skills ?? {};
@@ -80,17 +97,6 @@ export function getSkillsConfig(): SkillsConfig {
 export function isSkillEnabled(name: string): boolean {
   const { defaultEnabled = true, overrides = {} } = getSkillsConfig();
   return overrides[name] ?? defaultEnabled;
-}
-
-export function requireBlueBubbles(): BlueBubblesConfig {
-  const config = loadConfig();
-  if (!config.bluebubbles) {
-    throw new Error('bluebubbles config missing in raven.json5');
-  }
-  if (!config.bluebubbles.apiKey || !config.bluebubbles.serverUrl) {
-    throw new Error('bluebubbles.apiKey and bluebubbles.serverUrl are required in raven.json5');
-  }
-  return config.bluebubbles;
 }
 
 export function getSchedulerConfig(): SchedulerConfig {

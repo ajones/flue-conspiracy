@@ -33,7 +33,8 @@ const syncCalendars = defineTool({
     },
     additionalProperties: false,
   },
-  async execute({ calendars }: { calendars?: string[] }) {
+  async execute(input: Record<string, any>) {
+    const { calendars } = input as { calendars?: string[] };
     log.info('ical_sync', { calendars: calendars ?? 'all' });
     const args: string[] = [];
     if (calendars) {
@@ -105,19 +106,20 @@ const queryEvents = defineTool({
     required: ['mode'],
     additionalProperties: false,
   },
-  async execute({ mode, from, to, next_days, time_range, query, calendars, limit, all_day, sort, tz_convert }: {
-    mode: string;
-    from?: string;
-    to?: string;
-    next_days?: number;
-    time_range?: string;
-    query?: string;
-    calendars?: string[];
-    limit?: number;
-    all_day?: boolean;
-    sort?: string;
-    tz_convert?: string;
-  }) {
+  async execute(input: Record<string, any>) {
+    const { mode, from, to, next_days, time_range, query, calendars, limit, all_day, sort, tz_convert } = input as {
+      mode: string;
+      from?: string;
+      to?: string;
+      next_days?: number;
+      time_range?: string;
+      query?: string;
+      calendars?: string[];
+      limit?: number;
+      all_day?: boolean;
+      sort?: string;
+      tz_convert?: string;
+    };
     log.info('ical_query', { mode, from, to, next_days, time_range, query });
     const args = [`--${mode}`];
     if (from) args.push('--from', from);
@@ -162,7 +164,8 @@ const addCalendar = defineTool({
     required: ['url', 'name'],
     additionalProperties: false,
   },
-  async execute({ url, name, details }: { url: string; name: string; details?: string }) {
+  async execute(input: Record<string, any>) {
+    const { url, name, details } = input as { url: string; name: string; details?: string };
     log.info('ical_add', { name });
     const args = ['--url', url, '--name', name];
     if (details) args.push('--details', details);

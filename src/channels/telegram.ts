@@ -1,11 +1,13 @@
-import { dispatch } from '@flue/runtime';
+import { SpanStatusCode, context as otelContext, trace } from '@opentelemetry/api';
 import { createTelegramChannel, type TelegramChannel, type TelegramConversationRef } from '@flue/telegram';
 import { Api } from 'grammy';
 import type { Message, Update } from 'grammy/types';
 import { getTelegramBots, getMemoryConfig, getMemoryScope, type TelegramBotConfig } from '../config.ts';
-import { classifySkills, formatSkillContext } from '../skills/index.ts';
+import { classifySkills, formatSkillContext, type ClassifiedSkills } from '../skills/index.ts';
 import { trackAgentInstance } from '../agent-names.ts';
+
 import { isMemoryAvailable, recallMemory } from '../memory/index.ts';
+import { dispatchAndCollect } from '../dispatch-collect.ts';
 import { createLogger } from '../log.ts';
 
 export interface TelegramBot {
@@ -14,88 +16,158 @@ export interface TelegramBot {
   channel: TelegramChannel;
 }
 
+const tracer = trace.getTracer('raven');
+
 function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChannel) {
   const tgLog = createLogger(`telegram:${bot.name}`);
 
   return async (update: Update) => {
-    const incoming = update.message ?? update.channel_post ?? update.business_message;
-    if (incoming) {
-      const conversation = conversationFromMessage(incoming);
-      const text = incoming.text ?? incoming.caption ?? '';
-      const from = incoming.from?.username ?? incoming.from?.first_name ?? 'unknown';
+    await tracer.startActiveSpan('telegram.update', {
+      attributes: {
+        'raven.telegram.bot': bot.name,
+        'raven.telegram.update_id': update.update_id,
+      },
+    }, async (span) => {
+      try {
+        const incoming = update.message ?? update.channel_post ?? update.business_message;
+        if (incoming) {
+          const conversation = conversationFromMessage(incoming);
+          const text = incoming.text ?? incoming.caption ?? '';
+          const from = incoming.from?.username ?? incoming.from?.first_name ?? 'unknown';
 
-      tgLog.info('Message received', { updateId: update.update_id, from, text: text.slice(0, 80) });
+          tgLog.info('Message received', { updateId: update.update_id, from, text: text.slice(0, 80) });
+          span.addEvent('message.received', {
+            'raven.telegram.from': from,
+            'raven.telegram.text_length': text.length,
+          });
+          if (text) {
+            span.setAttribute('raven.telegram.message', text.slice(0, 4000));
+          }
 
-      const result = text
-        ? await classifySkills(text).catch(() => ({ enabled: [], disabled: [], reasoning: '' } as const))
-        : { enabled: [], disabled: [], reasoning: '' };
-      const skillContext = formatSkillContext(result);
+          const result = text
+            ? await classifySkills(text).catch(() => ({ enabled: [], disabled: [], reasoning: '' } as ClassifiedSkills))
+            : ({ enabled: [], disabled: [], reasoning: '' } as ClassifiedSkills);
+          const skillContext = formatSkillContext(result);
 
-      if (result.enabled.length > 0) {
-        tgLog.debug('Skills matched', { skills: result.enabled.map((s) => s.name), reasoning: result.reasoning });
-      }
+          if (result.enabled.length > 0) {
+            tgLog.debug('Skills matched', { skills: result.enabled.map((s) => s.name), reasoning: result.reasoning });
+          }
 
-      const convKey = channel.conversationKey(conversation);
-      trackAgentInstance(convKey, bot.agent);
+          span.addEvent('classification.complete', {
+            'raven.skills.enabled': result.enabled.map((s) => s.name).join(','),
+            'raven.skills.disabled': result.disabled.map((s) => s.name).join(','),
+            'raven.skills.reasoning': result.reasoning,
+          });
 
-      let memoryContext: string | undefined;
-      if (text && isMemoryAvailable()) {
-        const memConfig = getMemoryConfig();
-        const scope = getMemoryScope(bot.agent);
-        const scopeKey = scope === 'agent' ? bot.agent : `${bot.agent}:${convKey}`;
-        const recalled = await recallMemory(memConfig, scopeKey, text);
-        if (recalled) {
-          memoryContext = recalled;
-          tgLog.debug('Memory recalled', { count: recalled.split('\n').length, query: text.slice(0, 50) });
+          const convKey = channel.conversationKey(conversation);
+          trackAgentInstance(convKey, bot.agent);
+
+          let memoryContext: string | undefined;
+          if (text && isMemoryAvailable()) {
+            const memConfig = getMemoryConfig();
+            const scope = getMemoryScope(bot.agent);
+            const scopeKey = scope === 'agent' ? bot.agent : `${bot.agent}:${convKey}`;
+            const recalled = await recallMemory(memConfig, scopeKey, text);
+            if (recalled) {
+              memoryContext = recalled;
+              tgLog.debug('Memory recalled', { count: recalled.split('\n').length, query: text.slice(0, 50) });
+              span.addEvent('memory.recalled', {
+                'raven.memory.scope': scope,
+                'raven.memory.length': recalled.length,
+              });
+            }
+          }
+
+          tgLog.debug('Dispatching to agent', { agent: bot.agent, convKey });
+          span.addEvent('dispatching', {
+            'raven.agent': bot.agent,
+            'raven.conversation': convKey,
+          });
+
+          const reply = await dispatchAndCollect({
+            agent: bot.agent,
+            id: convKey,
+            input: {
+              type: 'telegram.message',
+              updateId: update.update_id,
+              text,
+              from: incoming.from ? {
+                id: incoming.from.id,
+                firstName: incoming.from.first_name,
+                ...(incoming.from.last_name ? { lastName: incoming.from.last_name } : {}),
+                ...(incoming.from.username ? { username: incoming.from.username } : {}),
+              } : undefined,
+              chatId: incoming.chat.id,
+              ...(skillContext ? { skillContext } : {}),
+              ...(memoryContext ? { memoryContext } : {}),
+            },
+          }, otelContext.active());
+          if (reply.text) {
+            await client.sendMessage(incoming.chat.id, reply.text, {
+              ...(conversation.type === 'business-chat'
+                ? { business_connection_id: conversation.businessConnectionId }
+                : {}),
+              ...(conversation.messageThreadId === undefined ? {} : { message_thread_id: conversation.messageThreadId }),
+              ...(conversation.directMessagesTopicId === undefined
+                ? {}
+                : { direct_messages_topic_id: conversation.directMessagesTopicId }),
+            });
+          }
+          span.setStatus({ code: SpanStatusCode.OK });
+          return;
         }
+
+        if (update.callback_query) {
+          const query = update.callback_query;
+          tgLog.info('Callback query', { updateId: update.update_id, data: query.data });
+          await client.answerCallbackQuery(query.id);
+          if (!query.message) return;
+          const cbConvKey = channel.conversationKey(conversationFromMessage(query.message));
+          trackAgentInstance(cbConvKey, bot.agent);
+          span.addEvent('callback.received', {
+            'raven.telegram.callback_data': query.data ?? '',
+            'raven.conversation': cbConvKey,
+          });
+          const cbReply = await dispatchAndCollect({
+            agent: bot.agent,
+            id: cbConvKey,
+            input: {
+              type: 'telegram.callback_query',
+              updateId: update.update_id,
+              data: query.data,
+              from: query.from ? {
+                id: query.from.id,
+                firstName: query.from.first_name,
+                ...(query.from.last_name ? { lastName: query.from.last_name } : {}),
+                ...(query.from.username ? { username: query.from.username } : {}),
+              } : undefined,
+            },
+          }, otelContext.active());
+          if (cbReply.text && query.message) {
+            const cbConversation = conversationFromMessage(query.message);
+            await client.sendMessage(query.message.chat.id, cbReply.text, {
+              ...(cbConversation.type === 'business-chat'
+                ? { business_connection_id: cbConversation.businessConnectionId }
+                : {}),
+              ...(cbConversation.messageThreadId === undefined ? {} : { message_thread_id: cbConversation.messageThreadId }),
+              ...(cbConversation.directMessagesTopicId === undefined
+                ? {}
+                : { direct_messages_topic_id: cbConversation.directMessagesTopicId }),
+            });
+          }
+          span.setStatus({ code: SpanStatusCode.OK });
+        }
+      } catch (err) {
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: err instanceof Error ? err.message : String(err),
+        });
+        span.recordException(err instanceof Error ? err : new Error(String(err)));
+        throw err;
+      } finally {
+        span.end();
       }
-
-      tgLog.debug('Dispatching to agent', { agent: bot.agent, convKey });
-
-      await dispatch({
-        agent: bot.agent,
-        id: convKey,
-        input: {
-          type: 'telegram.message',
-          updateId: update.update_id,
-          text,
-          from: incoming.from ? {
-            id: incoming.from.id,
-            firstName: incoming.from.first_name,
-            ...(incoming.from.last_name ? { lastName: incoming.from.last_name } : {}),
-            ...(incoming.from.username ? { username: incoming.from.username } : {}),
-          } : undefined,
-          chatId: incoming.chat.id,
-          ...(skillContext ? { skillContext } : {}),
-          ...(memoryContext ? { memoryContext } : {}),
-        },
-      });
-      return;
-    }
-
-    if (update.callback_query) {
-      const query = update.callback_query;
-      tgLog.info('Callback query', { updateId: update.update_id, data: query.data });
-      await client.answerCallbackQuery(query.id);
-      if (!query.message) return;
-      const cbConvKey = channel.conversationKey(conversationFromMessage(query.message));
-      trackAgentInstance(cbConvKey, bot.agent);
-      await dispatch({
-        agent: bot.agent,
-        id: cbConvKey,
-        input: {
-          type: 'telegram.callback_query',
-          updateId: update.update_id,
-          data: query.data,
-          from: query.from ? {
-            id: query.from.id,
-            firstName: query.from.first_name,
-            ...(query.from.last_name ? { lastName: query.from.last_name } : {}),
-            ...(query.from.username ? { username: query.from.username } : {}),
-          } : undefined,
-        },
-      });
-    }
+    });
   };
 }
 

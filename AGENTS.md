@@ -24,9 +24,9 @@ Define the agent in `src/agent.ts`, bind it to Codex through the auth module, an
 
 Add tools, subagents, and skills that define what this agent can actually do. All tools live in `src/tools/`.
 
-### Phase 4 — iMessage via BlueBubbles
+### Phase 4 — iMessage via `imsg`
 
-Add iMessage as a Flue channel using the BlueBubbles API. The adapter lives in `src/channels/imessage.ts`.
+Add iMessage as a Flue channel using the local `imsg` CLI. The adapter lives in `src/channels/imessage.ts`.
 
 ## Architecture
 
@@ -56,14 +56,16 @@ All Codex API access goes through OAuth 2.0 authorization code flow. Never use A
 
 ## iMessage Channel (Phase 4)
 
-The BlueBubbles API provides iMessage send/receive. The channel adapter in `src/channels/imessage.ts` must:
+The `imsg` CLI provides iMessage send/receive. The channel adapter in `src/channels/imessage.ts` must:
 
 - Accept incoming messages via webhook or polling
 - Route them to the agent as Flue channel events
-- Send agent responses back through BlueBubbles as iMessage replies
+- Send agent responses back through `imsg` as iMessage replies
 - Handle delivery receipts and errors gracefully
 
 Environment: `BLLEW_API_KEY`, `BLLEW_PHONE_NUMBER`.
+
+Each iMessage conversation must be configured with an explicit `agent`. Do not rely on a shared default agent or fallback routing.
 
 ## Tools
 

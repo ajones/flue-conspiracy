@@ -1,7 +1,5 @@
 import { createAgent, defineAgentProfile, defineTool } from '@flue/runtime';
 import type { AgentRouteHandler } from '@flue/runtime';
-import { postMessage } from '../telegram-tools.ts';
-import { bots } from '../channels/telegram.ts';
 import { getHomeAssistantConfig } from '../config.ts';
 import { createLogger } from '../log.ts';
 import { execFile } from 'node:child_process';
@@ -74,7 +72,8 @@ const getStates = defineTool({
     },
     additionalProperties: false,
   },
-  async execute({ domain }: { domain?: string }) {
+  async execute(args: Record<string, any>) {
+    const { domain } = args as { domain?: string };
     log.info('ha_get_states', { domain: domain ?? 'all' });
     const states: any[] = await haFetch('/states');
     const filtered = domain
@@ -121,12 +120,13 @@ const callService = defineTool({
     required: ['domain', 'service', 'entity_id'],
     additionalProperties: false,
   },
-  async execute({ domain, service, entity_id, service_data }: {
-    domain: string;
-    service: string;
-    entity_id: string;
-    service_data?: Record<string, any>;
-  }) {
+  async execute(args: Record<string, any>) {
+    const { domain, service, entity_id, service_data } = args as {
+      domain: string;
+      service: string;
+      entity_id: string;
+      service_data?: Record<string, any>;
+    };
     log.info('ha_call_service', { domain, service, entity_id, service_data });
     const body = { entity_id, ...(service_data ?? {}) };
     const result = await haFetch(`/services/${domain}/${service}`, {
@@ -152,7 +152,8 @@ const getEntityState = defineTool({
     required: ['entity_id'],
     additionalProperties: false,
   },
-  async execute({ entity_id }: { entity_id: string }) {
+  async execute(args: Record<string, any>) {
+    const { entity_id } = args as { entity_id: string };
     log.info('ha_get_entity', { entity_id });
     const state = await haFetch(`/states/${entity_id}`);
     log.info('ha_get_entity result', { entity_id, state: state.state });
@@ -174,7 +175,8 @@ const searchEntities = defineTool({
     required: ['pattern'],
     additionalProperties: false,
   },
-  async execute({ pattern }: { pattern: string }) {
+  async execute(args: Record<string, any>) {
+    const { pattern } = args as { pattern: string };
     log.info('ha_search_entities', { pattern });
     const states: any[] = await haFetch('/states');
     const re = new RegExp(pattern, 'i');
@@ -206,7 +208,8 @@ const renderTemplate = defineTool({
     required: ['template'],
     additionalProperties: false,
   },
-  async execute({ template }: { template: string }) {
+  async execute(args: Record<string, any>) {
+    const { template } = args as { template: string };
     log.info('ha_render_template', { template: template.slice(0, 200) });
     const result = await haFetch('/template', {
       method: 'POST',
@@ -262,29 +265,11 @@ Be concise. Confirm actions with a short summary of what changed.
 
 If memoryContext is provided in the input, use it as relevant background from previous conversations.
 
-When you receive a Telegram message, use the post_telegram_message tool to reply.`,
+Your text response will be delivered to the user automatically.`,
 });
 
-export default createAgent(({ id }) => {
-  const tools = [...homeAssistantTools];
-
-  if (id.startsWith('telegram:')) {
-    const bot = bots.find((b) => {
-      try {
-        b.channel.parseConversationKey(id);
-        return true;
-      } catch {
-        return false;
-      }
-    }) ?? bots[0];
-    if (bot) {
-      tools.push(postMessage(bot.client, bot.channel.parseConversationKey(id)));
-    }
-  }
-
-  return {
-    profile: homeAssistantProfile,
-    model: 'openai-codex/gpt-5.4-mini',
-    tools,
-  };
-});
+export default createAgent(() => ({
+  profile: homeAssistantProfile,
+  model: 'openai-codex/gpt-5.4-mini',
+  tools: homeAssistantTools,
+}));

@@ -4,6 +4,7 @@ import { flue } from '@flue/runtime/routing';
 import { Hono } from 'hono';
 import { getAccessToken } from './auth/tokens.ts';
 import { bots, startPolling } from './channels/telegram.ts';
+import { startWatching as startImessageWatching } from './channels/imessage.ts';
 import { Scheduler, createJobRoutes } from './scheduler/index.ts';
 import { getSchedulerConfig, getMemoryConfig } from './config.ts';
 import { initMemory } from './memory/index.ts';
@@ -55,6 +56,7 @@ app.onError((err, c) => {
 
 scheduler.start();
 startPolling();
+await startImessageWatching();
 log.info('Gateway ready');
 
 export default app;

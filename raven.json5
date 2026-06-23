@@ -12,6 +12,19 @@
     },
   ],
 
+  // iMessage bridge via the local imsg CLI.
+  // Each conversation entry must declare an agent. No default/fallback agent is used.
+  imessage: {
+    db: "/Users/raven/Library/Messages/chat.db",
+    conversations: [
+      {
+        name: "aaron-direct",
+        identifier: "+15127407713",
+        agent: "raven-lead",
+      },
+    ],
+  },
+
   // Skill configuration
   // defaultEnabled: true means all discovered skills are active unless overridden.
   // Set a skill to false in overrides to disable it.
@@ -47,9 +60,4 @@
     token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI4NmIyZTAzMDk5Mzg0ZThkYmZiNTYwZGJiNzY3Njc1NCIsImlhdCI6MTc3MTMwNzM1MSwiZXhwIjoyMDg2NjY3MzUxfQ.JIiEQDyaMV35NS7b3pvKas-JrfDjDTtZr0WD27WSg4o",
   },
 
-  // BlueBubbles iMessage bridge (Phase 4)
-  // bluebubbles: {
-  //   apiKey: "",
-  //   serverUrl: "",
-  // },
 }

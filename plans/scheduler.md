@@ -19,8 +19,8 @@ A job always runs in **isolation** (fresh session per run, no carry-over). No `s
 | `name` | string | yes | Unique kebab-case slug |
 | `agent` | string | yes | Target agent, e.g. `"raven-lead"` |
 | `prompt` | string | yes | The work prompt — what data to gather/process |
-| `resultPreference` | string | yes | Standing instruction for what the agent should do with the result — natural language, e.g. `"format the weather nicely and send it to the family BlueBubbles group"` or `"email a summary to foo@bar.com"` |
-| `target` | string | yes | Channel conversation key for dispatch routing, e.g. `"telegram:chat:123456"` or `"bluebubbles:group:user1+user2"`. The agent turn lands in this conversation's history and the agent gets that channel's tools. |
+| `resultPreference` | string | yes | Standing instruction for what the agent should do with the result — natural language, e.g. `"format the weather nicely and send it to the family iMessage group"` or `"email a summary to foo@bar.com"` |
+| `target` | string | yes | Channel conversation key for dispatch routing, e.g. `"telegram:chat:123456"` or `"imessage:chat:3"`. The agent turn lands in this conversation's history and the agent gets that channel's tools. |
 | `schedule` | object | yes | When to run (see schedule types) |
 
 ### Optional Properties
@@ -86,8 +86,8 @@ interface Script {
   "name": "daily-weather-brief",
   "agent": "raven-lead",
   "prompt": "Gather the weather and calendar data provided and prepare a morning brief.",
-  "resultPreference": "Format a friendly morning summary with weather highlights and today's schedule. Send it to the family BlueBubbles group.",
-  "target": "bluebubbles:group:family",
+  "resultPreference": "Format a friendly morning summary with weather highlights and today's schedule. Send it to the family iMessage group.",
+  "target": "imessage:chat:3",
   "schedule": { "kind": "cron", "expr": "0 7 * * *", "tz": "America/Los_Angeles" },
   "scripts": [
     {
@@ -155,7 +155,7 @@ Single `setTimeout` pointing at the soonest due job. When it fires, query all jo
    ```typescript
    dispatch({
      agent: job.agent,
-     id: job.target,  // e.g. "bluebubbles:group:family" or "telegram:chat:123456"
+     id: job.target,  // e.g. "imessage:chat:3" or "telegram:chat:123456"
      input: {
        type: 'scheduler.job',
        jobName: job.name,
