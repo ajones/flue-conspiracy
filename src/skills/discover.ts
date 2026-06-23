@@ -1,5 +1,8 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { createLogger } from '../log.ts';
+
+const log = createLogger('skills');
 
 export interface DiscoveredSkill {
   name: string;
@@ -78,6 +81,7 @@ export function loadSkills(): Map<string, DiscoveredSkill> {
   if (cached) return cached;
   const list = walk(SKILLS_ROOT, []);
   cached = new Map(list.map((s) => [s.name, s]));
+  log.info('Discovered skills', { count: list.length, skills: list.map((s) => s.name) });
   return cached;
 }
 

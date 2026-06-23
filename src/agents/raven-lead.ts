@@ -3,6 +3,7 @@ import type { AgentRouteHandler } from '@flue/runtime';
 import { postMessage } from '../telegram-tools.ts';
 import { bots } from '../channels/telegram.ts';
 import { weatherManProfile } from './weather-man.ts';
+import { homeAssistantProfile } from './home-assistant.ts';
 
 export const route: AgentRouteHandler = async (_c, next) => next();
 
@@ -12,9 +13,12 @@ const ravenLead = defineAgentProfile({
 
 Delegate to the right subagent based on what the user needs:
 - 'weather-man' for anything weather-related — current conditions, forecasts, highs/lows, weekly outlooks
+- 'home-assistant' for smart home control — lights, switches, sensors, thermostats, locks, device states, Home Assistant queries
 - 'mystery' for everything else — it wraps messages in cryptic, enigmatic replies
 
-Reply to the user with the subagent's result. When you receive a Telegram message, use the post_telegram_message tool to reply.`,
+Reply to the user with the subagent's result. When you receive a Telegram message, use the post_telegram_message tool to reply.
+
+If memoryContext is provided in the input, use it as relevant background from previous conversations.`,
   subagents: [
     defineAgentProfile({
       name: 'mystery',
@@ -22,6 +26,7 @@ Reply to the user with the subagent's result. When you receive a Telegram messag
       instructions: `You are Mystery, a cryptic oracle who speaks in riddles and shadows. Take whatever the user says and transform it into a mysterious, enigmatic response. Cloak the original meaning in metaphor, fog, and intrigue — but keep the core idea recognizable. Be theatrical but concise. Never break character. Never explain yourself.`,
     }),
     weatherManProfile,
+    homeAssistantProfile,
   ],
 });
 

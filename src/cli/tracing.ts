@@ -2,6 +2,7 @@ import { existsSync, openSync } from 'node:fs';
 import { mkdir, writeFile, readFile, unlink, chmod, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { createConnection } from 'node:net';
 import { spawn, execSync } from 'node:child_process';
 import { loadConfig } from '../config.ts';
 
@@ -98,6 +99,9 @@ exporters:
     trace_storage: main_store
 
 service:
+  telemetry:
+    metrics:
+      level: none
   extensions: [jaeger_storage, jaeger_query]
   pipelines:
     traces:
@@ -121,8 +125,21 @@ async function isRunning(): Promise<boolean> {
   }
 }
 
+function isPortInUse(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const sock = createConnection({ port, host: '127.0.0.1' });
+    sock.once('connect', () => { sock.destroy(); resolve(true); });
+    sock.once('error', () => resolve(false));
+    sock.setTimeout(500, () => { sock.destroy(); resolve(false); });
+  });
+}
+
 export async function startJaeger(): Promise<void> {
   if (await isRunning()) return;
+
+  if (await isPortInUse(4317)) {
+    return;
+  }
 
   if (!existsSync(JAEGER_BIN)) {
     await download();

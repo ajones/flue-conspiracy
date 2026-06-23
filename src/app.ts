@@ -5,10 +5,22 @@ import { Hono } from 'hono';
 import { getAccessToken } from './auth/tokens.ts';
 import { bots, startPolling } from './channels/telegram.ts';
 import { Scheduler, createJobRoutes } from './scheduler/index.ts';
-import { getSchedulerConfig } from './config.ts';
+import { getSchedulerConfig, getMemoryConfig } from './config.ts';
+import { initMemory } from './memory/index.ts';
+import { registerMemoryObserver } from './memory/observer.ts';
+import { log } from './log.ts';
 
 const token = await getAccessToken();
 registerProvider('openai-codex', { apiKey: token });
+log.info('Provider registered', { provider: 'openai-codex' });
+
+const memConfig = getMemoryConfig();
+if (memConfig.enabled !== false) {
+  registerMemoryObserver();
+  initMemory(memConfig).catch((err) => {
+    log.error('Memory init failed', { error: String(err) });
+  });
+}
 
 const scheduler = new Scheduler(getSchedulerConfig());
 const app = new Hono();
@@ -29,6 +41,7 @@ for (const bot of bots.slice(1)) {
   for (const route of bot.channel.routes) {
     const path = `/channels/${bot.config.name}${route.path}`;
     app.on(route.method, [path], route.handler as any);
+    log.debug('Registered webhook route', { bot: bot.config.name, path });
   }
 }
 
@@ -36,11 +49,12 @@ app.route('/api', createJobRoutes(scheduler));
 app.route('/', flue());
 
 app.onError((err, c) => {
-  console.error(`[${c.req.method} ${c.req.path}]`, err);
+  log.error(`${c.req.method} ${c.req.path}`, { error: err.message, stack: err.stack });
   return c.json({ error: 'internal server error' }, 500);
 });
 
 scheduler.start();
 startPolling();
+log.info('Gateway ready');
 
 export default app;

@@ -27,12 +27,26 @@ export interface SchedulerConfig {
   catchUpMissed?: boolean;
 }
 
+export interface HomeAssistantConfig {
+  url: string;
+  token: string;
+}
+
+export interface MemoryConfig {
+  enabled?: boolean;
+  url?: string;
+  defaultScope?: 'agent' | 'conversation';
+  agents?: Record<string, { scope: 'agent' | 'conversation' }>;
+}
+
 export interface PiracyConfig {
   port?: number;
   telegram?: TelegramBotConfig[];
   bluebubbles?: BlueBubblesConfig;
   skills?: SkillsConfig;
   scheduler?: SchedulerConfig;
+  homeassistant?: HomeAssistantConfig;
+  memory?: MemoryConfig;
   traceRetentionDays?: number;
 }
 
@@ -76,6 +90,27 @@ export function requireBlueBubbles(): BlueBubblesConfig {
 export function getSchedulerConfig(): SchedulerConfig {
   const config = loadConfig();
   return config.scheduler ?? {};
+}
+
+export function getMemoryConfig(): MemoryConfig {
+  const config = loadConfig();
+  return config.memory ?? {};
+}
+
+export function getMemoryScope(agentName: string): 'agent' | 'conversation' {
+  const { defaultScope = 'conversation', agents = {} } = getMemoryConfig();
+  return agents[agentName]?.scope ?? defaultScope;
+}
+
+export function getHomeAssistantConfig(): HomeAssistantConfig {
+  const config = loadConfig();
+  if (!config.homeassistant) {
+    throw new Error('homeassistant config missing in piracy.json5');
+  }
+  if (!config.homeassistant.url || !config.homeassistant.token) {
+    throw new Error('homeassistant.url and homeassistant.token are required in piracy.json5');
+  }
+  return config.homeassistant;
 }
 
 export function getGatewayUrl(): string {

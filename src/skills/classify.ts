@@ -1,6 +1,9 @@
 import { getAccessToken } from '../auth/tokens.ts';
 import { isSkillEnabled } from '../config.ts';
 import { loadSkills, type DiscoveredSkill } from './discover.ts';
+import { createLogger } from '../log.ts';
+
+const log = createLogger('skills');
 
 export interface ClassifierOptions {
   maxSkills?: number;
@@ -49,7 +52,10 @@ export async function classifySkills(
   const { maxSkills = 3, model = 'gpt-5.4-mini' } = options;
   const skills = loadSkills();
 
-  if (skills.size === 0) return { enabled: [], disabled: [], reasoning: 'no skills available' };
+  if (skills.size === 0) {
+    log.debug('No skills available, skipping classification');
+    return { enabled: [], disabled: [], reasoning: 'no skills available' };
+  }
 
   const catalog = [...skills.values()].map((s) => ({
     name: s.name,
@@ -77,6 +83,7 @@ export async function classifySkills(
 
   if (!response.ok) {
     const text = await response.text();
+    log.error('Classifier call failed', { status: response.status, body: text.slice(0, 200) });
     throw new Error(`Classifier call failed (${response.status}): ${text}`);
   }
 
@@ -110,6 +117,13 @@ export async function classifySkills(
       disabled.push(skill);
     }
   }
+
+  log.debug('Classification complete', {
+    matched: names,
+    enabled: enabled.map((s) => s.name),
+    disabled: disabled.map((s) => s.name),
+    reasoning: parsed.reasoning,
+  });
 
   return {
     enabled,

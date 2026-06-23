@@ -9,6 +9,28 @@ import { createOpenTelemetryObserver } from '@flue/opentelemetry';
 import { observe } from '@flue/runtime';
 import { getAgentName } from './agent-names.ts';
 
+const ATTR_MAX_LENGTH = 16_000;
+const LARGE_ATTRS = new Set([
+  'flue.turn.input', 'flue.turn.output',
+  'flue.task.prompt', 'flue.task.result',
+  'flue.tool.arguments', 'flue.tool.result',
+  'flue.operation.result', 'flue.workflow.payload', 'flue.workflow.result',
+]);
+
+function truncateAttributes(attrs: Record<string, unknown>): Record<string, unknown> {
+  let changed = false;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(attrs)) {
+    if (LARGE_ATTRS.has(k) && typeof v === 'string' && v.length > ATTR_MAX_LENGTH) {
+      out[k] = v.slice(0, ATTR_MAX_LENGTH) + `... [truncated ${v.length - ATTR_MAX_LENGTH} chars]`;
+      changed = true;
+    } else {
+      out[k] = v;
+    }
+  }
+  return changed ? out : attrs;
+}
+
 class AgentServiceNameExporter implements SpanExporter {
   private resourceCache = new Map<string, Resource>();
   private taskAgentMap = new Map<string, string>();
@@ -41,19 +63,28 @@ class AgentServiceNameExporter implements SpanExporter {
             : typeof instanceId === 'string'
               ? getAgentName(instanceId)
               : undefined;
-      if (!serviceName) return span;
 
-      let resource = this.resourceCache.get(serviceName);
-      if (!resource) {
-        resource = span.resource.merge(
-          resourceFromAttributes({ [ATTR_SERVICE_NAME]: serviceName }),
-        );
-        this.resourceCache.set(serviceName, resource);
+      const truncated = truncateAttributes(span.attributes as Record<string, unknown>);
+      const overrides: Record<string, PropertyDescriptor> = {};
+
+      if (truncated !== span.attributes) {
+        overrides.attributes = { value: truncated, enumerable: true };
       }
 
-      return Object.create(span, {
-        resource: { value: resource, enumerable: true },
-      }) as ReadableSpan;
+      if (serviceName) {
+        let resource = this.resourceCache.get(serviceName);
+        if (!resource) {
+          resource = span.resource.merge(
+            resourceFromAttributes({ [ATTR_SERVICE_NAME]: serviceName }),
+          );
+          this.resourceCache.set(serviceName, resource);
+        }
+        overrides.resource = { value: resource, enumerable: true };
+      }
+
+      return Object.keys(overrides).length > 0
+        ? Object.create(span, overrides) as ReadableSpan
+        : span;
     });
 
     this.inner.export(rewritten, resultCallback);

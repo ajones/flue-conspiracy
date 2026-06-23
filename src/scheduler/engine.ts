@@ -3,6 +3,9 @@ import { computeNextRun } from './cron.ts';
 import * as db from './db.ts';
 import { runScripts, assemblePrompt } from './scripts.ts';
 import type { JobRow } from './types.ts';
+import { createLogger } from '../log.ts';
+
+const log = createLogger('scheduler');
 
 export interface SchedulerConfig {
   maxConcurrent: number;
@@ -38,7 +41,7 @@ export class Scheduler {
     this.scheduleNextWake();
     this.schedulePrune();
 
-    console.log('[scheduler] Started');
+    log.info('Started');
   }
 
   async stop(): Promise<void> {
@@ -50,7 +53,7 @@ export class Scheduler {
       this.timer = null;
     }
 
-    console.log(`[scheduler] Stopped (${this.running.size} jobs still in flight)`);
+    log.info('Stopped', { inFlight: this.running.size });
   }
 
   reload(): void {
@@ -63,7 +66,7 @@ export class Scheduler {
     const stale = db.getStaleRunning();
     for (const run of stale) {
       db.finishRun(run.id, 'error', 'Gateway restarted while job was running');
-      console.log(`[scheduler] Marked stale run ${run.id} (${run.jobName}) as error`);
+      log.warn('Recovered stale run', { runId: run.id, job: run.jobName });
     }
   }
 
@@ -129,7 +132,7 @@ export class Scheduler {
       }
 
       this.fire(job).catch((err) => {
-        console.error(`[scheduler] Unhandled error firing ${job.name}:`, err);
+        log.error('Unhandled error firing job', { job: job.name, error: (err as Error).message ?? String(err) });
       });
     }
 
@@ -158,7 +161,7 @@ export class Scheduler {
     });
 
     try {
-      console.log(`[scheduler] Firing ${job.name} → ${job.agent} @ ${job.target}`);
+      log.info('Firing job', { job: job.name, agent: job.agent, target: job.target });
 
       const scriptResults = await runScripts(job.scripts);
       const assembled = assemblePrompt(job.prompt, job.resultPreference, scriptResults);
@@ -179,11 +182,11 @@ export class Scheduler {
 
       db.finishRun(runId, 'ok');
       this.advanceJob(job, 'ok');
-      console.log(`[scheduler] ${job.name} dispatched OK`);
+      log.info('Job dispatched OK', { job: job.name });
     } catch (err: any) {
       const msg = err.message ?? String(err);
       db.finishRun(runId, 'error', msg);
-      console.error(`[scheduler] ${job.name} failed:`, msg);
+      log.error('Job failed', { job: job.name, error: msg });
 
       const errors = job.consecutiveErrors + 1;
       db.updateAfterRun(
@@ -195,7 +198,7 @@ export class Scheduler {
       );
 
       if (job.maxRetries > 0 && retryAttempt < job.maxRetries) {
-        console.log(`[scheduler] Retrying ${job.name} in ${job.retryDelayMs}ms (attempt ${retryAttempt + 1}/${job.maxRetries})`);
+        log.warn('Retrying job', { job: job.name, delayMs: job.retryDelayMs, attempt: retryAttempt + 1, maxRetries: job.maxRetries });
         setTimeout(() => {
           const fresh = db.getJob(job.id);
           if (fresh && fresh.enabled) {
@@ -215,14 +218,14 @@ export class Scheduler {
 
     if (isOneShot && job.deleteAfterRun && status === 'ok') {
       db.deleteJob(job.id);
-      console.log(`[scheduler] Deleted one-shot job ${job.name}`);
+      log.info('Deleted one-shot job', { job: job.name });
       return;
     }
 
     if (isOneShot) {
       db.setEnabled(job.id, false);
       db.updateAfterRun(job.id, null, Date.now(), status, 0);
-      console.log(`[scheduler] Disabled one-shot job ${job.name}`);
+      log.info('Disabled one-shot job', { job: job.name });
       return;
     }
 
@@ -241,7 +244,7 @@ export class Scheduler {
     if (!job) throw new Error(`Job not found: ${jobId}`);
 
     this.fire(job).catch((err) => {
-      console.error(`[scheduler] Manual trigger of ${job.name} failed:`, err);
+      log.error('Manual trigger failed', { job: job.name, error: (err as Error).message ?? String(err) });
     });
 
     return job.name;
@@ -254,7 +257,7 @@ export class Scheduler {
       const cutoff = this.config.runRetentionDays * 24 * 60 * 60 * 1000;
       const pruned = db.pruneRuns(cutoff);
       if (pruned > 0) {
-        console.log(`[scheduler] Pruned ${pruned} old run records`);
+        log.info('Pruned old runs', { count: pruned });
       }
       setTimeout(doPrune, interval);
     };

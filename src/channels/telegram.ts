@@ -2,9 +2,11 @@ import { dispatch } from '@flue/runtime';
 import { createTelegramChannel, type TelegramChannel, type TelegramConversationRef } from '@flue/telegram';
 import { Api } from 'grammy';
 import type { Message, Update } from 'grammy/types';
-import { getTelegramBots, type TelegramBotConfig } from '../config.ts';
+import { getTelegramBots, getMemoryConfig, getMemoryScope, type TelegramBotConfig } from '../config.ts';
 import { classifySkills, formatSkillContext } from '../skills/index.ts';
 import { trackAgentInstance } from '../agent-names.ts';
+import { isMemoryAvailable, recallMemory } from '../memory/index.ts';
+import { createLogger } from '../log.ts';
 
 export interface TelegramBot {
   config: TelegramBotConfig;
@@ -13,26 +15,59 @@ export interface TelegramBot {
 }
 
 function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChannel) {
+  const tgLog = createLogger(`telegram:${bot.name}`);
+
   return async (update: Update) => {
     const incoming = update.message ?? update.channel_post ?? update.business_message;
     if (incoming) {
       const conversation = conversationFromMessage(incoming);
       const text = incoming.text ?? incoming.caption ?? '';
+      const from = incoming.from?.username ?? incoming.from?.first_name ?? 'unknown';
+
+      tgLog.info('Message received', { updateId: update.update_id, from, text: text.slice(0, 80) });
+
       const result = text
         ? await classifySkills(text).catch(() => ({ enabled: [], disabled: [], reasoning: '' } as const))
         : { enabled: [], disabled: [], reasoning: '' };
       const skillContext = formatSkillContext(result);
 
+      if (result.enabled.length > 0) {
+        tgLog.debug('Skills matched', { skills: result.enabled.map((s) => s.name), reasoning: result.reasoning });
+      }
+
       const convKey = channel.conversationKey(conversation);
       trackAgentInstance(convKey, bot.agent);
+
+      let memoryContext: string | undefined;
+      if (text && isMemoryAvailable()) {
+        const memConfig = getMemoryConfig();
+        const scope = getMemoryScope(bot.agent);
+        const scopeKey = scope === 'agent' ? bot.agent : `${bot.agent}:${convKey}`;
+        const recalled = await recallMemory(memConfig, scopeKey, text);
+        if (recalled) {
+          memoryContext = recalled;
+          tgLog.debug('Memory recalled', { count: recalled.split('\n').length, query: text.slice(0, 50) });
+        }
+      }
+
+      tgLog.debug('Dispatching to agent', { agent: bot.agent, convKey });
+
       await dispatch({
         agent: bot.agent,
         id: convKey,
         input: {
           type: 'telegram.message',
           updateId: update.update_id,
-          message: incoming,
+          text,
+          from: incoming.from ? {
+            id: incoming.from.id,
+            firstName: incoming.from.first_name,
+            ...(incoming.from.last_name ? { lastName: incoming.from.last_name } : {}),
+            ...(incoming.from.username ? { username: incoming.from.username } : {}),
+          } : undefined,
+          chatId: incoming.chat.id,
           ...(skillContext ? { skillContext } : {}),
+          ...(memoryContext ? { memoryContext } : {}),
         },
       });
       return;
@@ -40,6 +75,7 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
 
     if (update.callback_query) {
       const query = update.callback_query;
+      tgLog.info('Callback query', { updateId: update.update_id, data: query.data });
       await client.answerCallbackQuery(query.id);
       if (!query.message) return;
       const cbConvKey = channel.conversationKey(conversationFromMessage(query.message));
@@ -51,7 +87,12 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
           type: 'telegram.callback_query',
           updateId: update.update_id,
           data: query.data,
-          from: query.from,
+          from: query.from ? {
+            id: query.from.id,
+            firstName: query.from.first_name,
+            ...(query.from.last_name ? { lastName: query.from.last_name } : {}),
+            ...(query.from.username ? { username: query.from.username } : {}),
+          } : undefined,
         },
       });
     }
@@ -108,6 +149,7 @@ export function startPolling() {
   const pollingBots = bots.filter((b) => (b.config.mode ?? 'poll') === 'poll');
 
   for (const bot of pollingBots) {
+    const tgLog = createLogger(`telegram:${bot.config.name}`);
     const handler = handleUpdate(bot.config, bot.client, bot.channel);
     let offset = 0;
 
@@ -122,24 +164,22 @@ export function startPolling() {
 
           for (const update of updates) {
             offset = update.update_id + 1;
-            const msg = update.message?.text ?? update.callback_query?.data ?? '(no text)';
-            console.log(`[telegram:${bot.config.name}] update ${update.update_id}: ${msg}`);
             handler(update).catch((err) => {
-              console.error(`[telegram:${bot.config.name}] Error handling update ${update.update_id}:`, err);
+              tgLog.error('Update handler failed', { updateId: update.update_id, error: err.message ?? String(err) });
             });
           }
-        } catch (err) {
-          console.error(`[telegram:${bot.config.name}] Polling error:`, err);
+        } catch (err: any) {
+          tgLog.error('Polling error', { error: err.message ?? String(err) });
           await new Promise((r) => setTimeout(r, 5000));
         }
       }
     };
 
     bot.client.deleteWebhook().then(() => {
-      console.log(`[telegram:${bot.config.name}] Polling started → agent "${bot.config.agent}"`);
+      tgLog.info('Polling started', { agent: bot.config.agent });
       poll();
-    }).catch((err) => {
-      console.error(`[telegram:${bot.config.name}] Failed to clear webhook:`, err);
+    }).catch((err: any) => {
+      tgLog.error('Failed to clear webhook', { error: err.message ?? String(err) });
     });
   }
 }
