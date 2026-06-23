@@ -4,6 +4,8 @@ import { postMessage } from '../telegram-tools.ts';
 import { bots } from '../channels/telegram.ts';
 import { weatherManProfile } from './weather-man.ts';
 import { homeAssistantProfile } from './home-assistant.ts';
+import { appleNotesTools } from '../tools/apple-notes.ts';
+import { icalReaderTools } from '../tools/ical-reader.ts';
 import { getWorkspaceConfig } from '../config.ts';
 import { resolveAgentWorkspace } from '../workspace/index.ts';
 
@@ -16,6 +18,8 @@ const ravenLead = defineAgentProfile({
 Delegate to the right subagent based on what the user needs:
 - 'weather-man' for anything weather-related — current conditions, forecasts, highs/lows, weekly outlooks
 - 'home-assistant' for smart home control — lights, switches, sensors, thermostats, locks, device states, Home Assistant queries
+- Use the apple_notes_* tools directly for anything involving Apple Notes — reading, creating, updating, listing, or searching notes
+- Use the ical_* tools directly for calendar queries — upcoming events, date range lookups, fuzzy search across calendars. Always sync before querying if freshness matters.
 - 'mystery' for everything else — it wraps messages in cryptic, enigmatic replies
 
 Reply to the user with the subagent's result. When you receive a Telegram message, use the post_telegram_message tool to reply.
@@ -57,6 +61,6 @@ export default createAgent(({ id }) => {
   return {
     profile: ravenLead,
     model: 'openai-codex/gpt-5.4-mini',
-    tools,
+    tools: [...tools, ...appleNotesTools, ...icalReaderTools],
   };
 });
