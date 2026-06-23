@@ -39,6 +39,11 @@ export interface MemoryConfig {
   agents?: Record<string, { scope: 'agent' | 'conversation' }>;
 }
 
+export interface WorkspaceConfig {
+  enabled?: boolean;
+  dir?: string;
+}
+
 export interface PiracyConfig {
   port?: number;
   telegram?: TelegramBotConfig[];
@@ -47,6 +52,7 @@ export interface PiracyConfig {
   scheduler?: SchedulerConfig;
   homeassistant?: HomeAssistantConfig;
   memory?: MemoryConfig;
+  workspace?: WorkspaceConfig;
   traceRetentionDays?: number;
 }
 
@@ -111,6 +117,11 @@ export function getHomeAssistantConfig(): HomeAssistantConfig {
     throw new Error('homeassistant.url and homeassistant.token are required in piracy.json5');
   }
   return config.homeassistant;
+}
+
+export function getWorkspaceConfig(): WorkspaceConfig {
+  const config = loadConfig();
+  return config.workspace ?? {};
 }
 
 export function getGatewayUrl(): string {

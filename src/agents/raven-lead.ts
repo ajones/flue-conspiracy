@@ -4,6 +4,8 @@ import { postMessage } from '../telegram-tools.ts';
 import { bots } from '../channels/telegram.ts';
 import { weatherManProfile } from './weather-man.ts';
 import { homeAssistantProfile } from './home-assistant.ts';
+import { getWorkspaceConfig } from '../config.ts';
+import { resolveAgentWorkspace } from '../workspace/index.ts';
 
 export const route: AgentRouteHandler = async (_c, next) => next();
 
@@ -45,6 +47,11 @@ export default createAgent(({ id }) => {
     if (bot) {
       tools.push(postMessage(bot.client, bot.channel.parseConversationKey(id)));
     }
+  }
+
+  const wsConfig = getWorkspaceConfig();
+  if (wsConfig.enabled !== false) {
+    resolveAgentWorkspace(wsConfig, 'raven-lead');
   }
 
   return {
