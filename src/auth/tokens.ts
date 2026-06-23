@@ -32,7 +32,7 @@ export async function getAccessToken(): Promise<string> {
     return auth.OPENAI_API_KEY;
   }
 
-  throw new Error('Not authenticated — run `piracy auth login` or `codex login` first');
+  throw new Error('Not authenticated — run `raven auth login` or `codex login` first');
 }
 
 export async function getApiKey(): Promise<string> {
@@ -42,5 +42,5 @@ export async function getApiKey(): Promise<string> {
     return auth.OPENAI_API_KEY;
   }
 
-  throw new Error('No API key found — run `piracy auth login` or `codex login` first');
+  throw new Error('No API key found — run `raven auth login` or `codex login` first');
 }

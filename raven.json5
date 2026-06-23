@@ -1,0 +1,55 @@
+{
+  port: 7284,
+
+  // Each telegram bot maps to an agent by name.
+  // mode: "poll" (default) — long-polls Telegram, no public URL needed
+  //       "webhook" — requires public URL + webhookSecret
+  telegram: [
+    {
+      name: "greeter",
+      botToken: "8871400582:AAGHZ7itcHkJeNQwfdOwbsOoCRIIwStYGLs",
+      agent: "raven-lead",
+    },
+  ],
+
+  // Skill configuration
+  // defaultEnabled: true means all discovered skills are active unless overridden.
+  // Set a skill to false in overrides to disable it.
+  skills: {
+    defaultEnabled: true,
+    overrides: {
+      // "dad-joke": false,
+      // "swim-class-finder": false,
+    },
+  },
+
+  memory: {
+    enabled: true,
+    defaultScope: "conversation",
+    agents: {
+      // "raven-lead": { scope: "agent" },
+    },
+  },
+
+  workspace: {
+    enabled: true,
+    dir: ".workspace",
+  },
+
+  scheduler: {
+    maxConcurrent: 5,
+    runRetentionDays: 30,
+    defaultTimezone: "America/Los_Angeles",
+  },
+
+  homeassistant: {
+    url: "http://192.168.86.244:8123",
+    token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI4NmIyZTAzMDk5Mzg0ZThkYmZiNTYwZGJiNzY3Njc1NCIsImlhdCI6MTc3MTMwNzM1MSwiZXhwIjoyMDg2NjY3MzUxfQ.JIiEQDyaMV35NS7b3pvKas-JrfDjDTtZr0WD27WSg4o",
+  },
+
+  // BlueBubbles iMessage bridge (Phase 4)
+  // bluebubbles: {
+  //   apiKey: "",
+  //   serverUrl: "",
+  // },
+}

@@ -28,7 +28,7 @@ This gives us control over exactly which tools the agent sees (not all 53), avoi
 
 ## Implementation steps
 
-### 1. Add config (`src/config.ts` + `piracy.json5`)
+### 1. Add config (`src/config.ts` + `raven.json5`)
 
 Add `MemoryConfig` interface, `getMemoryConfig()`, and `getMemoryScope()` to `src/config.ts`:
 
@@ -50,9 +50,9 @@ export function getMemoryScope(agentName: string): 'agent' | 'conversation' {
 }
 ```
 
-Add to `PiracyConfig` interface: `memory?: MemoryConfig`
+Add to `RavenConfig` interface: `memory?: MemoryConfig`
 
-Add to `piracy.json5`:
+Add to `raven.json5`:
 ```json5
 memory: {
   enabled: true,
@@ -156,7 +156,7 @@ bun add @agentmemory/agentmemory
 
 ## Files to modify
 - `src/config.ts` — add `MemoryConfig`, `getMemoryConfig()`
-- `piracy.json5` — add `memory` section
+- `raven.json5` — add `memory` section
 - `src/app.ts` — init memory at startup
 - `src/agents/raven-lead.ts` — inject tools + update instructions
 - `package.json` — add `@agentmemory/agentmemory` dependency

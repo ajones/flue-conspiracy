@@ -44,7 +44,7 @@ export interface WorkspaceConfig {
   dir?: string;
 }
 
-export interface PiracyConfig {
+export interface RavenConfig {
   port?: number;
   telegram?: TelegramBotConfig[];
   bluebubbles?: BlueBubblesConfig;
@@ -56,14 +56,14 @@ export interface PiracyConfig {
   traceRetentionDays?: number;
 }
 
-const CONFIG_PATH = join(import.meta.dirname, '..', 'piracy.json5');
+const CONFIG_PATH = join(import.meta.dirname, '..', 'raven.json5');
 
-let cached: PiracyConfig | null = null;
+let cached: RavenConfig | null = null;
 
-export function loadConfig(): PiracyConfig {
+export function loadConfig(): RavenConfig {
   if (cached) return cached;
   const raw = readFileSync(CONFIG_PATH, 'utf8');
-  cached = JSON5.parse(raw) as PiracyConfig;
+  cached = JSON5.parse(raw) as RavenConfig;
   return cached;
 }
 
@@ -85,10 +85,10 @@ export function isSkillEnabled(name: string): boolean {
 export function requireBlueBubbles(): BlueBubblesConfig {
   const config = loadConfig();
   if (!config.bluebubbles) {
-    throw new Error('bluebubbles config missing in piracy.json5');
+    throw new Error('bluebubbles config missing in raven.json5');
   }
   if (!config.bluebubbles.apiKey || !config.bluebubbles.serverUrl) {
-    throw new Error('bluebubbles.apiKey and bluebubbles.serverUrl are required in piracy.json5');
+    throw new Error('bluebubbles.apiKey and bluebubbles.serverUrl are required in raven.json5');
   }
   return config.bluebubbles;
 }
@@ -111,10 +111,10 @@ export function getMemoryScope(agentName: string): 'agent' | 'conversation' {
 export function getHomeAssistantConfig(): HomeAssistantConfig {
   const config = loadConfig();
   if (!config.homeassistant) {
-    throw new Error('homeassistant config missing in piracy.json5');
+    throw new Error('homeassistant config missing in raven.json5');
   }
   if (!config.homeassistant.url || !config.homeassistant.token) {
-    throw new Error('homeassistant.url and homeassistant.token are required in piracy.json5');
+    throw new Error('homeassistant.url and homeassistant.token are required in raven.json5');
   }
   return config.homeassistant;
 }
@@ -125,7 +125,7 @@ export function getWorkspaceConfig(): WorkspaceConfig {
 }
 
 export function getGatewayUrl(): string {
-  if (process.env.PIRACY_URL) return process.env.PIRACY_URL;
+  if (process.env.RAVEN_URL) return process.env.RAVEN_URL;
   const config = loadConfig();
   return `http://localhost:${config.port}`;
 }

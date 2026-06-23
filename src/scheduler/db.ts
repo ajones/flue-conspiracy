@@ -20,7 +20,7 @@ export function getDb(): DatabaseInstance {
 
 function ensureTables(db: DatabaseInstance) {
   db.exec(`
-    CREATE TABLE IF NOT EXISTS piracy_jobs (
+    CREATE TABLE IF NOT EXISTS raven_jobs (
       id                TEXT PRIMARY KEY,
       name              TEXT NOT NULL UNIQUE,
       description       TEXT NOT NULL DEFAULT '',
@@ -45,15 +45,15 @@ function ensureTables(db: DatabaseInstance) {
       consecutive_errors INTEGER NOT NULL DEFAULT 0
     );
 
-    CREATE INDEX IF NOT EXISTS idx_piracy_jobs_next_run
-      ON piracy_jobs(next_run_at) WHERE enabled = 1 AND next_run_at IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_raven_jobs_next_run
+      ON raven_jobs(next_run_at) WHERE enabled = 1 AND next_run_at IS NOT NULL;
 
-    CREATE INDEX IF NOT EXISTS idx_piracy_jobs_name
-      ON piracy_jobs(name);
+    CREATE INDEX IF NOT EXISTS idx_raven_jobs_name
+      ON raven_jobs(name);
 
-    CREATE TABLE IF NOT EXISTS piracy_job_runs (
+    CREATE TABLE IF NOT EXISTS raven_job_runs (
       id               TEXT PRIMARY KEY,
-      job_id           TEXT NOT NULL REFERENCES piracy_jobs(id) ON DELETE CASCADE,
+      job_id           TEXT NOT NULL REFERENCES raven_jobs(id) ON DELETE CASCADE,
       job_name         TEXT NOT NULL,
       status           TEXT NOT NULL,
       started_at       INTEGER NOT NULL,
@@ -66,11 +66,11 @@ function ensureTables(db: DatabaseInstance) {
       retry_attempt    INTEGER NOT NULL DEFAULT 0
     );
 
-    CREATE INDEX IF NOT EXISTS idx_piracy_job_runs_job
-      ON piracy_job_runs(job_id, started_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_raven_job_runs_job
+      ON raven_job_runs(job_id, started_at DESC);
 
-    CREATE INDEX IF NOT EXISTS idx_piracy_job_runs_started
-      ON piracy_job_runs(started_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_raven_job_runs_started
+      ON raven_job_runs(started_at DESC);
   `);
 }
 
@@ -120,7 +120,7 @@ function rowToRun(row: any): JobRunRow {
 
 export function listJobs(filter?: { enabled?: boolean; tag?: string; agent?: string }): JobRow[] {
   const db = getDb();
-  let sql = 'SELECT * FROM piracy_jobs WHERE 1=1';
+  let sql = 'SELECT * FROM raven_jobs WHERE 1=1';
   const params: any[] = [];
 
   if (filter?.enabled !== undefined) {
@@ -145,13 +145,13 @@ export function listJobs(filter?: { enabled?: boolean; tag?: string; agent?: str
 
 export function getJob(id: string): JobRow | null {
   const db = getDb();
-  const row = db.prepare('SELECT * FROM piracy_jobs WHERE id = ?').get(id);
+  const row = db.prepare('SELECT * FROM raven_jobs WHERE id = ?').get(id);
   return row ? rowToJob(row) : null;
 }
 
 export function getJobByName(name: string): JobRow | null {
   const db = getDb();
-  const row = db.prepare('SELECT * FROM piracy_jobs WHERE name = ?').get(name);
+  const row = db.prepare('SELECT * FROM raven_jobs WHERE name = ?').get(name);
   return row ? rowToJob(row) : null;
 }
 
@@ -165,7 +165,7 @@ export function createJob(input: CreateJobInput, nextRunAt: number | null): JobR
   const now = Date.now();
 
   db.prepare(`
-    INSERT INTO piracy_jobs (
+    INSERT INTO raven_jobs (
       id, name, description, enabled, agent, prompt, result_preference, target,
       scripts, schedule_kind, schedule_data, delete_after_run, max_retries,
       retry_delay_ms, concurrency_key, tags, created_at, updated_at, next_run_at
@@ -212,20 +212,20 @@ export function updateJob(id: string, patch: UpdateJobInput, nextRunAt?: number 
   }
 
   params.push(id);
-  db.prepare(`UPDATE piracy_jobs SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+  db.prepare(`UPDATE raven_jobs SET ${sets.join(', ')} WHERE id = ?`).run(...params);
 
   return getJob(id);
 }
 
 export function deleteJob(id: string): boolean {
   const db = getDb();
-  const result = db.prepare('DELETE FROM piracy_jobs WHERE id = ?').run(id);
+  const result = db.prepare('DELETE FROM raven_jobs WHERE id = ?').run(id);
   return result.changes > 0;
 }
 
 export function setEnabled(id: string, enabled: boolean): void {
   const db = getDb();
-  db.prepare('UPDATE piracy_jobs SET enabled = ?, updated_at = ? WHERE id = ?')
+  db.prepare('UPDATE raven_jobs SET enabled = ?, updated_at = ? WHERE id = ?')
     .run(enabled ? 1 : 0, Date.now(), id);
 }
 
@@ -238,7 +238,7 @@ export function updateAfterRun(
 ): void {
   const db = getDb();
   db.prepare(`
-    UPDATE piracy_jobs
+    UPDATE raven_jobs
     SET next_run_at = ?, last_run_at = ?, last_status = ?,
         consecutive_errors = ?, updated_at = ?
     WHERE id = ?
@@ -248,7 +248,7 @@ export function updateAfterRun(
 export function getDueJobs(now: number): JobRow[] {
   const db = getDb();
   const rows = db.prepare(
-    'SELECT * FROM piracy_jobs WHERE enabled = 1 AND next_run_at IS NOT NULL AND next_run_at <= ?'
+    'SELECT * FROM raven_jobs WHERE enabled = 1 AND next_run_at IS NOT NULL AND next_run_at <= ?'
   ).all(now);
   return rows.map(rowToJob);
 }
@@ -256,14 +256,14 @@ export function getDueJobs(now: number): JobRow[] {
 export function getNextWakeTime(): number | null {
   const db = getDb();
   const row = db.prepare(
-    'SELECT MIN(next_run_at) as next FROM piracy_jobs WHERE enabled = 1 AND next_run_at IS NOT NULL'
+    'SELECT MIN(next_run_at) as next FROM raven_jobs WHERE enabled = 1 AND next_run_at IS NOT NULL'
   ).get() as any;
   return row?.next ?? null;
 }
 
 export function getAllEnabledJobs(): JobRow[] {
   const db = getDb();
-  const rows = db.prepare('SELECT * FROM piracy_jobs WHERE enabled = 1').all();
+  const rows = db.prepare('SELECT * FROM raven_jobs WHERE enabled = 1').all();
   return rows.map(rowToJob);
 }
 
@@ -272,7 +272,7 @@ export function getAllEnabledJobs(): JobRow[] {
 export function insertRun(run: Omit<JobRunRow, 'finishedAt' | 'durationMs'>): void {
   const db = getDb();
   db.prepare(`
-    INSERT INTO piracy_job_runs (
+    INSERT INTO raven_job_runs (
       id, job_id, job_name, status, started_at, dispatch_id,
       error_message, assembled_prompt, next_run_at, retry_attempt
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -287,7 +287,7 @@ export function finishRun(runId: string, status: string, errorMessage?: string):
   const db = getDb();
   const now = Date.now();
   db.prepare(`
-    UPDATE piracy_job_runs
+    UPDATE raven_job_runs
     SET status = ?, finished_at = ?, duration_ms = (? - started_at), error_message = COALESCE(?, error_message)
     WHERE id = ?
   `).run(status, now, now, errorMessage ?? null, runId);
@@ -295,7 +295,7 @@ export function finishRun(runId: string, status: string, errorMessage?: string):
 
 export function listRuns(opts?: { jobId?: string; limit?: number; status?: string }): JobRunRow[] {
   const db = getDb();
-  let sql = 'SELECT * FROM piracy_job_runs WHERE 1=1';
+  let sql = 'SELECT * FROM raven_job_runs WHERE 1=1';
   const params: any[] = [];
 
   if (opts?.jobId) {
@@ -315,13 +315,13 @@ export function listRuns(opts?: { jobId?: string; limit?: number; status?: strin
 
 export function getStaleRunning(): JobRunRow[] {
   const db = getDb();
-  return db.prepare("SELECT * FROM piracy_job_runs WHERE status = 'running'")
+  return db.prepare("SELECT * FROM raven_job_runs WHERE status = 'running'")
     .all().map(rowToRun);
 }
 
 export function pruneRuns(olderThanMs: number): number {
   const db = getDb();
   const cutoff = Date.now() - olderThanMs;
-  const result = db.prepare('DELETE FROM piracy_job_runs WHERE started_at < ?').run(cutoff);
+  const result = db.prepare('DELETE FROM raven_job_runs WHERE started_at < ?').run(cutoff);
   return result.changes;
 }

@@ -8,30 +8,30 @@ import { tracing } from './tracing.ts';
 import { start, stop, install, uninstall, restart, serviceStatus } from './service.ts';
 import { tui } from './tui.ts';
 
-const USAGE = `piracy — flue-conspiracy CLI
+const USAGE = `raven — flue-conspiracy CLI
 
 Usage:
-  piracy start              Start the gateway (background)
-  piracy stop               Stop the gateway
-  piracy restart            Restart the gateway
-  piracy tui [agent]        Chat with an agent
-  piracy install            Install as a launchd service
-  piracy uninstall          Remove the launchd service
-  piracy status             Show service status
-  piracy jobs list          List scheduled jobs
-  piracy jobs show <name>   Show job details + recent runs
-  piracy jobs enable <name> Enable a job
-  piracy jobs disable <name> Disable a job
-  piracy jobs delete <name> Delete a job
-  piracy jobs trigger <name> Trigger a manual run
-  piracy jobs history       Show execution history
-  piracy auth login         Authenticate via Codex (opens browser)
-  piracy auth status        Show current auth status
-  piracy auth logout        Clear stored credentials
-  piracy logs               Show recent runs
-  piracy logs -f            Tail runs in real time
-  piracy logs <runId>       Stream events for a specific run
-  piracy tracing open       Open the trace viewer in the browser
+  raven start              Start the gateway (background)
+  raven stop               Stop the gateway
+  raven restart            Restart the gateway
+  raven tui [agent]        Chat with an agent
+  raven install            Install as a launchd service
+  raven uninstall          Remove the launchd service
+  raven status             Show service status
+  raven jobs list          List scheduled jobs
+  raven jobs show <name>   Show job details + recent runs
+  raven jobs enable <name> Enable a job
+  raven jobs disable <name> Disable a job
+  raven jobs delete <name> Delete a job
+  raven jobs trigger <name> Trigger a manual run
+  raven jobs history       Show execution history
+  raven auth login         Authenticate via Codex (opens browser)
+  raven auth status        Show current auth status
+  raven auth logout        Clear stored credentials
+  raven logs               Show recent runs
+  raven logs -f            Tail runs in real time
+  raven logs <runId>       Stream events for a specific run
+  raven tracing open       Open the trace viewer in the browser
 
 Options:
   --help, -h                Show this help message

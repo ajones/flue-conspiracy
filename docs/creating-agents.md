@@ -128,7 +128,7 @@ Skills that have shell scripts (like `google-weather`) can be called via `execFi
 
 ## Agent Config
 
-If your agent needs credentials or connection details, add a section to `piracy.json5` and wire it through `src/config.ts`:
+If your agent needs credentials or connection details, add a section to `raven.json5` and wire it through `src/config.ts`:
 
 1. Add an interface in `config.ts`:
 
@@ -139,10 +139,10 @@ export interface MyServiceConfig {
 }
 ```
 
-2. Add the field to `PiracyConfig`:
+2. Add the field to `RavenConfig`:
 
 ```ts
-export interface PiracyConfig {
+export interface RavenConfig {
   // ...existing fields...
   myservice?: MyServiceConfig;
 }
@@ -154,13 +154,13 @@ export interface PiracyConfig {
 export function getMyServiceConfig(): MyServiceConfig {
   const config = loadConfig();
   if (!config.myservice) {
-    throw new Error('myservice config missing in piracy.json5');
+    throw new Error('myservice config missing in raven.json5');
   }
   return config.myservice;
 }
 ```
 
-4. Add the section to `piracy.json5`:
+4. Add the section to `raven.json5`:
 
 ```json5
 myservice: {
@@ -179,7 +179,7 @@ const { url, token } = getMyServiceConfig();
 
 ## Wiring to Telegram
 
-To assign an agent to a Telegram bot, add an entry in `piracy.json5`:
+To assign an agent to a Telegram bot, add an entry in `raven.json5`:
 
 ```json5
 telegram: [
@@ -216,5 +216,5 @@ const ravenLead = defineAgentProfile({
 4. Export `route: AgentRouteHandler` (use `async (_c, next) => next()` if no custom routing)
 5. Include the Telegram `postMessage` tool in the `id.startsWith('telegram:')` block if the agent will respond to Telegram messages
 6. If there's a matching skill in `skills/`, reference its docs for domain knowledge
-7. If the agent needs credentials or connection details, add a config section to `piracy.json5` and `src/config.ts`
-8. Wire it up: either add a `telegram` entry in `piracy.json5`, or import its profile as a subagent of an existing agent
+7. If the agent needs credentials or connection details, add a config section to `raven.json5` and `src/config.ts`
+8. Wire it up: either add a `telegram` entry in `raven.json5`, or import its profile as a subagent of an existing agent

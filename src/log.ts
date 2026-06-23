@@ -68,4 +68,4 @@ export function createLogger(scope: string): Logger {
   };
 }
 
-export const log = createLogger('piracy');
+export const log = createLogger('raven');

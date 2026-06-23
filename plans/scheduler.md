@@ -167,7 +167,7 @@ Single `setTimeout` pointing at the soonest due job. When it fires, query all jo
 4. Fire-and-forget — dispatch accepted = job `ok`
 
 ### Separation of concerns
-- **Job run history** (timing, script outputs, errors, assembled prompt) → stored in `piracy_job_runs`
+- **Job run history** (timing, script outputs, errors, assembled prompt) → stored in `raven_job_runs`
 - **Agent conversation** (the agent's response, tool calls, delivery) → lives in the channel's conversation history via Flue's normal agent state, visible in the channel
 
 ### Crash recovery
@@ -194,7 +194,7 @@ src/cli/jobs.ts         - CLI subcommands (talks to gateway via HTTP)
 - `src/app.ts` — mount scheduler routes, start scheduler
 - `src/config.ts` — add `SchedulerConfig` interface
 - `src/cli/index.ts` — add `jobs` command routing
-- `piracy.json5` — add `scheduler` config section
+- `raven.json5` — add `scheduler` config section
 
 **Not in scope:** OpenClaw migration.
 
@@ -202,13 +202,13 @@ src/cli/jobs.ts         - CLI subcommands (talks to gateway via HTTP)
 
 ## SQLite Schema
 
-Tables use `piracy_` prefix to avoid collisions with Flue's `flue_` tables. Opened via `bun:sqlite` on the same `./data/flue.db`.
+Tables use `raven_` prefix to avoid collisions with Flue's `flue_` tables. Opened via `bun:sqlite` on the same `./data/flue.db`.
 
-**`piracy_jobs`** — job definitions with denormalized `next_run_at` for efficient due-job queries (indexed: `WHERE enabled = 1 AND next_run_at IS NOT NULL`).
+**`raven_jobs`** — job definitions with denormalized `next_run_at` for efficient due-job queries (indexed: `WHERE enabled = 1 AND next_run_at IS NOT NULL`).
 
 Key columns: `id` (UUID), `name` (unique slug), `agent`, `prompt` (text), `result_preference` (text), `target` (text — channel conversation key), `scripts` (JSON array), `schedule_kind`, `schedule_data` (JSON), `description`, `enabled`, `delete_after_run`, `max_retries`, `retry_delay_ms`, `concurrency_key`, `tags` (JSON array), `next_run_at`, `last_run_at`, `last_status`, `consecutive_errors`, `created_at`, `updated_at`.
 
-**`piracy_job_runs`** — execution history with `job_id` FK, `status`, timestamps, `dispatch_id`, `error_message`, `retry_attempt`, `assembled_prompt` (the final prompt sent to the agent including script results).
+**`raven_job_runs`** — execution history with `job_id` FK, `status`, timestamps, `dispatch_id`, `error_message`, `retry_attempt`, `assembled_prompt` (the final prompt sent to the agent including script results).
 
 ---
 
@@ -218,7 +218,7 @@ Key columns: `id` (UUID), `name` (unique slug), `agent`, `prompt` (text), `resul
 
 ---
 
-## Config Addition (`piracy.json5`)
+## Config Addition (`raven.json5`)
 
 ```json5
 scheduler: {
@@ -247,17 +247,17 @@ scheduler: {
 
 ---
 
-## CLI Commands (`piracy jobs`)
+## CLI Commands (`raven jobs`)
 
 | Command | Description |
 |---------|-------------|
-| `piracy jobs list` | Table of all jobs. Flags: `--enabled`, `--disabled`, `--json` |
-| `piracy jobs show <name>` | Job details + recent runs |
-| `piracy jobs enable <name>` | Enable a job |
-| `piracy jobs disable <name>` | Disable a job |
-| `piracy jobs delete <name>` | Delete with confirmation |
-| `piracy jobs trigger <name>` | Manual run |
-| `piracy jobs history [name]` | Execution history |
+| `raven jobs list` | Table of all jobs. Flags: `--enabled`, `--disabled`, `--json` |
+| `raven jobs show <name>` | Job details + recent runs |
+| `raven jobs enable <name>` | Enable a job |
+| `raven jobs disable <name>` | Disable a job |
+| `raven jobs delete <name>` | Delete with confirmation |
+| `raven jobs trigger <name>` | Manual run |
+| `raven jobs history [name]` | Execution history |
 
 ---
 
@@ -273,8 +273,8 @@ scheduler: {
 
 ## Verification
 
-1. Start gateway (`piracy start`), create a test job via API with `schedule: { kind: "relative", delayMs: 10000 }` and a script that runs `echo "hello"`
+1. Start gateway (`raven start`), create a test job via API with `schedule: { kind: "relative", delayMs: 10000 }` and a script that runs `echo "hello"`
 2. Watch logs for script execution and dispatch firing after 10 seconds
 3. Create a cron job (`*/1 * * * *`), verify it fires each minute
 4. Stop and restart gateway, verify missed jobs catch up
-5. Use `piracy jobs list` to verify job appears, `piracy jobs history` to see the run record and assembled prompt
+5. Use `raven jobs list` to verify job appears, `raven jobs history` to see the run record and assembled prompt

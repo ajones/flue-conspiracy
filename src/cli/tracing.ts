@@ -1,4 +1,4 @@
-import { existsSync, openSync } from 'node:fs';
+import { existsSync, openSync, unlinkSync } from 'node:fs';
 import { mkdir, writeFile, readFile, unlink, chmod, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
@@ -6,12 +6,12 @@ import { createConnection } from 'node:net';
 import { spawn, execSync } from 'node:child_process';
 import { loadConfig } from '../config.ts';
 
-const PIRACY_DIR = join(homedir(), '.piracy');
-const BIN_DIR = join(PIRACY_DIR, 'bin');
-const LOG_DIR = join(PIRACY_DIR, 'logs');
-const JAEGER_DATA_DIR = join(PIRACY_DIR, 'jaeger');
-const JAEGER_CONFIG_PATH = join(PIRACY_DIR, 'jaeger.yaml');
-const PID_FILE = join(PIRACY_DIR, 'jaeger.pid');
+const RAVEN_DIR = join(homedir(), '.raven');
+const BIN_DIR = join(RAVEN_DIR, 'bin');
+const LOG_DIR = join(RAVEN_DIR, 'logs');
+const JAEGER_DATA_DIR = join(RAVEN_DIR, 'jaeger');
+const JAEGER_CONFIG_PATH = join(RAVEN_DIR, 'jaeger.yaml');
+const PID_FILE = join(RAVEN_DIR, 'jaeger.pid');
 const JAEGER_BIN = join(BIN_DIR, 'jaeger');
 const UI_URL = 'http://localhost:16686';
 const JAEGER_VERSION = '2.19.0';
@@ -134,6 +134,13 @@ function isPortInUse(port: number): Promise<boolean> {
   });
 }
 
+function clearStaleLock(): void {
+  const lockFile = join(JAEGER_DATA_DIR, 'keys', 'LOCK');
+  if (existsSync(lockFile)) {
+    try { unlinkSync(lockFile); } catch {}
+  }
+}
+
 export async function startJaeger(): Promise<void> {
   if (await isRunning()) return;
 
@@ -146,6 +153,7 @@ export async function startJaeger(): Promise<void> {
   }
 
   await writeJaegerConfig();
+  clearStaleLock();
 
   await mkdir(LOG_DIR, { recursive: true });
   const outFd = openSync(join(LOG_DIR, 'jaeger-stdout.log'), 'a');
@@ -200,12 +208,12 @@ export async function tracing(args: string[]): Promise<void> {
 
   if (sub === 'open') {
     if (!(await isRunning())) {
-      console.error('Jaeger is not running. Start it first with: piracy start');
+      console.error('Jaeger is not running. Start it first with: raven start');
       process.exit(1);
     }
     return openUI();
   }
 
   console.log(`Usage:
-  piracy tracing open     Open the trace viewer in the browser`);
+  raven tracing open     Open the trace viewer in the browser`);
 }

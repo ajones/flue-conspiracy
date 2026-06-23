@@ -177,7 +177,7 @@ export class Scheduler {
       });
 
       db.getDb().prepare(
-        'UPDATE piracy_job_runs SET assembled_prompt = ?, dispatch_id = ? WHERE id = ?'
+        'UPDATE raven_job_runs SET assembled_prompt = ?, dispatch_id = ? WHERE id = ?'
       ).run(assembled, (receipt as any)?.id ?? null, runId);
 
       db.finishRun(runId, 'ok');

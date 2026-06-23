@@ -19,7 +19,7 @@ Read credentials from the Codex CLI auth store (`~/.codex/auth.json`). Login del
 Deliverables:
 - `src/auth/oauth.ts` — wraps `codex login` / `codex logout`
 - `src/auth/tokens.ts` — reads access token and API key from Codex auth store
-- `piracy auth login|status|logout` CLI commands
+- `raven auth login|status|logout` CLI commands
 
 ### Phase 2 — Basic Agent + Flue TUI
 
@@ -59,7 +59,7 @@ npx tsx src/cli/index.ts auth login   # authenticate via Codex
 
 ### Configuration
 
-All service config lives in `piracy.json5` (JSON5 with comments):
+All service config lives in `raven.json5` (JSON5 with comments):
 
 ```json5
 {
@@ -79,7 +79,7 @@ All service config lives in `piracy.json5` (JSON5 with comments):
 }
 ```
 
-Types are defined in `src/config.ts` — see `PiracyConfig`.
+Types are defined in `src/config.ts` — see `RavenConfig`.
 
 The first telegram bot is mounted at `/channels/telegram/webhook`. Additional bots mount at `/channels/<name>/webhook`.
 
@@ -91,7 +91,7 @@ npx flue dev
 
 ## Auth Flow
 
-1. `piracy auth login` delegates to `codex login`, which opens a browser for ChatGPT sign-in.
+1. `raven auth login` delegates to `codex login`, which opens a browser for ChatGPT sign-in.
 2. Codex stores tokens in `~/.codex/auth.json`.
 3. The agent reads the access token from that file on each request.
 4. Codex handles token refresh automatically during active sessions.

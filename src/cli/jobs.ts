@@ -1,16 +1,16 @@
 import { parseArgs } from 'node:util';
 import { getGatewayUrl } from '../config.ts';
 
-const USAGE = `piracy jobs — manage scheduled jobs
+const USAGE = `raven jobs — manage scheduled jobs
 
 Commands:
-  piracy jobs list              List all jobs
-  piracy jobs show <name>       Show job details + recent runs
-  piracy jobs enable <name>     Enable a job
-  piracy jobs disable <name>    Disable a job
-  piracy jobs delete <name>     Delete a job
-  piracy jobs trigger <name>    Trigger a manual run
-  piracy jobs history [name]    Show execution history
+  raven jobs list              List all jobs
+  raven jobs show <name>       Show job details + recent runs
+  raven jobs enable <name>     Enable a job
+  raven jobs disable <name>    Disable a job
+  raven jobs delete <name>     Delete a job
+  raven jobs trigger <name>    Trigger a manual run
+  raven jobs history [name]    Show execution history
 
 Flags:
   --enabled         Only show enabled jobs (list)
@@ -28,7 +28,7 @@ async function api(path: string, opts?: RequestInit) {
       headers: { 'Content-Type': 'application/json', ...opts?.headers },
     });
   } catch {
-    console.error(`Gateway is not running at ${base}. Start it with: piracy start`);
+    console.error(`Gateway is not running at ${base}. Start it with: raven start`);
     process.exit(1);
   }
   const body = await res.json();
@@ -246,23 +246,23 @@ export async function jobs(args: string[]) {
 
   if (sub === 'list' || sub === 'ls') return list(rest, asJson);
   if (sub === 'show') {
-    if (!rest[0]) { console.error('Usage: piracy jobs show <name>'); process.exit(1); }
+    if (!rest[0]) { console.error('Usage: raven jobs show <name>'); process.exit(1); }
     return show(rest[0], asJson);
   }
   if (sub === 'enable') {
-    if (!rest[0]) { console.error('Usage: piracy jobs enable <name>'); process.exit(1); }
+    if (!rest[0]) { console.error('Usage: raven jobs enable <name>'); process.exit(1); }
     return enable(rest[0], asJson);
   }
   if (sub === 'disable') {
-    if (!rest[0]) { console.error('Usage: piracy jobs disable <name>'); process.exit(1); }
+    if (!rest[0]) { console.error('Usage: raven jobs disable <name>'); process.exit(1); }
     return disable(rest[0], asJson);
   }
   if (sub === 'delete' || sub === 'rm') {
-    if (!rest[0]) { console.error('Usage: piracy jobs delete <name>'); process.exit(1); }
+    if (!rest[0]) { console.error('Usage: raven jobs delete <name>'); process.exit(1); }
     return deleteJob(rest[0], asJson);
   }
   if (sub === 'trigger' || sub === 'run') {
-    if (!rest[0]) { console.error('Usage: piracy jobs trigger <name>'); process.exit(1); }
+    if (!rest[0]) { console.error('Usage: raven jobs trigger <name>'); process.exit(1); }
     return trigger(rest[0], asJson);
   }
   if (sub === 'history' || sub === 'hist') return history(rest, asJson);

@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 
 const DEFAULT_SERVER = 'http://localhost:3583';
-const LOG_DIR = join(homedir(), '.piracy', 'logs');
+const LOG_DIR = join(homedir(), '.raven', 'logs');
 
 interface Run {
   runId?: string;

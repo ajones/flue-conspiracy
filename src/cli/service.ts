@@ -6,16 +6,16 @@ import { execSync, spawn } from 'node:child_process';
 import { loadConfig } from '../config.ts';
 import { startJaeger, stopJaeger } from './tracing.ts';
 
-const LABEL = 'com.piracy.gateway';
-const JAEGER_LABEL = 'com.piracy.jaeger';
+const LABEL = 'com.raven.gateway';
+const JAEGER_LABEL = 'com.raven.jaeger';
 const PLIST_PATH = join(homedir(), 'Library', 'LaunchAgents', `${LABEL}.plist`);
 const JAEGER_PLIST_PATH = join(homedir(), 'Library', 'LaunchAgents', `${JAEGER_LABEL}.plist`);
 const PROJECT_ROOT = resolve(import.meta.dirname, '..', '..');
-const PIRACY_DIR = join(homedir(), '.piracy');
-const LOG_DIR = join(PIRACY_DIR, 'logs');
-const PID_FILE = join(PIRACY_DIR, 'gateway.pid');
-const JAEGER_BIN = join(PIRACY_DIR, 'bin', 'jaeger');
-const JAEGER_CONFIG = join(PIRACY_DIR, 'jaeger.yaml');
+const RAVEN_DIR = join(homedir(), '.raven');
+const LOG_DIR = join(RAVEN_DIR, 'logs');
+const PID_FILE = join(RAVEN_DIR, 'gateway.pid');
+const JAEGER_BIN = join(RAVEN_DIR, 'bin', 'jaeger');
+const JAEGER_CONFIG = join(RAVEN_DIR, 'jaeger.yaml');
 
 function npxPath(): string {
   try {
@@ -170,7 +170,7 @@ function buildJaegerPlist(): string {
 
 export async function install() {
   if (existsSync(PLIST_PATH)) {
-    console.log('Service already installed. Run `piracy uninstall` first to reinstall.');
+    console.log('Service already installed. Run `raven uninstall` first to reinstall.');
     return;
   }
 

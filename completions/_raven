@@ -1,6 +1,6 @@
-#compdef piracy
+#compdef raven
 
-_piracy() {
+_raven() {
   local -a commands
   commands=(
     'start:Start the gateway (background)'
@@ -37,7 +37,7 @@ _piracy() {
 
   case "$state" in
     command)
-      _describe -t commands 'piracy command' commands
+      _describe -t commands 'raven command' commands
       ;;
     args)
       case "${words[1]}" in
@@ -54,12 +54,12 @@ _piracy() {
           ;;
         tui)
           local -a agents
-          local piracy_bin="${commands[piracy]:-$(command -v piracy 2>/dev/null)}"
+          local raven_bin="${commands[raven]:-$(command -v raven 2>/dev/null)}"
           local project_root
-          if [[ -n "$piracy_bin" ]]; then
-            project_root="${piracy_bin:A:h}"
+          if [[ -n "$raven_bin" ]]; then
+            project_root="${raven_bin:A:h}"
             # resolve symlink to project — npm link points bin -> src/cli/index.ts
-            [[ -L "$piracy_bin" ]] && project_root="$(cd "$(dirname "$(readlink "$piracy_bin")")/.." && pwd)"
+            [[ -L "$raven_bin" ]] && project_root="$(cd "$(dirname "$(readlink "$raven_bin")")/.." && pwd)"
           fi
           if [[ -d "${project_root}/src/agents" ]]; then
             agents=(${${(f)"$(ls "${project_root}/src/agents"/*.ts 2>/dev/null)"}:t:r})
@@ -71,4 +71,4 @@ _piracy() {
   esac
 }
 
-_piracy "$@"
+_raven "$@"

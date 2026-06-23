@@ -100,7 +100,7 @@ class Tui {
     const visible = lines.slice(-msgAreaHeight);
     let out = moveTo(1, 1);
 
-    out += `${BOLD}piracy${RESET} ${DIM}— ${CYAN}${this.agent}${RESET}${CLR}\n`;
+    out += `${BOLD}raven${RESET} ${DIM}— ${CYAN}${this.agent}${RESET}${CLR}\n`;
 
     for (let i = 0; i < msgAreaHeight; i++) {
       out += (i < visible.length ? visible[i] : '') + CLR + '\n';
@@ -192,7 +192,7 @@ class Tui {
       const offset = res.headers.get('Stream-Next-Offset') ?? '-1';
       await this.readStream(offset, lastIdx);
     } catch {
-      this.messages[lastIdx].content = `Gateway is not running at ${BASE_URL}. Start it with: piracy start`;
+      this.messages[lastIdx].content = `Gateway is not running at ${BASE_URL}. Start it with: raven start`;
     }
 
     this.busy = false;
@@ -277,7 +277,7 @@ export async function tui(args: string[]) {
   try {
     await fetch(`${BASE_URL}/openapi.json`, { signal: AbortSignal.timeout(2000) });
   } catch {
-    console.error(`Gateway is not running at ${BASE_URL}. Start it with: piracy start`);
+    console.error(`Gateway is not running at ${BASE_URL}. Start it with: raven start`);
     process.exit(1);
   }
   const agent = await resolveAgent(args[0]);

@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "bin": {
-    "piracy": "./src/cli/index.ts"
+    "raven": "./src/cli/index.ts"
   },
   "scripts": {
     "dev": "NODE_OPTIONS='--disable-warning=DEP0040' npx flue dev",
-    "piracy": "bun src/cli/index.ts"
+    "raven": "bun src/cli/index.ts"
   },
   "dependencies": {
     "@agentmemory/agentmemory": "^0.9.27",

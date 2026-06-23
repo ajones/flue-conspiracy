@@ -145,7 +145,7 @@ export function formatSkillContext(result: ClassifiedSkills): string {
       `<disabled-skills>\n` +
         `The following skills matched this message but are disabled in the config: ${names.join(', ')}.\n` +
         `Let the user know these skills are available but currently disabled. ` +
-        `Suggest they enable the skill in piracy.json5 under skills.overrides, or offer to help solve their request a different way.\n` +
+        `Suggest they enable the skill in raven.json5 under skills.overrides, or offer to help solve their request a different way.\n` +
         `</disabled-skills>`,
     );
   }

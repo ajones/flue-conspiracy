@@ -105,7 +105,7 @@ if (process.env.OTEL_DISABLED !== 'true') {
   });
 
   const sdk = new NodeSDK({
-    resource: resourceFromAttributes({ [ATTR_SERVICE_NAME]: 'flue-conspiracy' }),
+    resource: resourceFromAttributes({ [ATTR_SERVICE_NAME]: 'raven' }),
     spanProcessors: [new BatchSpanProcessor(new AgentServiceNameExporter(otlp))],
   });
 

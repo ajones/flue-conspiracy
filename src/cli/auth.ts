@@ -1,7 +1,7 @@
 import { login } from '../auth/oauth.ts';
 import { loadCodexAuth } from '../auth/tokens.ts';
 
-const AUTH_USAGE = `piracy auth — manage Codex credentials
+const AUTH_USAGE = `raven auth — manage Codex credentials
 
 Subcommands:
   login      Authenticate via Codex (opens browser)
@@ -42,7 +42,7 @@ async function status(): Promise<void> {
       console.log(`Last refresh: ${codexAuth.last_refresh}`);
     }
   } catch {
-    console.log('Not authenticated. Run `piracy auth login` to connect.');
+    console.log('Not authenticated. Run `raven auth login` to connect.');
   }
 }
 
