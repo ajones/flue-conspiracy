@@ -1,11 +1,15 @@
+import { trace, context as otelContext, SpanStatusCode } from '@opentelemetry/api';
 import { dispatch } from '@flue/runtime';
 import { computeNextRun } from './cron.ts';
 import * as db from './db.ts';
 import { runScripts, assemblePrompt } from './scripts.ts';
 import type { JobRow } from './types.ts';
 import { createLogger } from '../log.ts';
+import { trackDispatchContext, untrackDispatchContext } from '../instrumentation.js';
+import { trackAgentInstance } from '../agent-names.ts';
 
 const log = createLogger('scheduler');
+const tracer = trace.getTracer('raven');
 
 export interface SchedulerConfig {
   maxConcurrent: number;
@@ -140,77 +144,128 @@ export class Scheduler {
   }
 
   private async fire(job: JobRow, retryAttempt = 0): Promise<void> {
-    const runId = crypto.randomUUID();
-    const now = Date.now();
+    await tracer.startActiveSpan('job', {
+      attributes: {
+        'raven.job.name': job.name,
+        'raven.job.id': job.id,
+        'raven.job.agent': job.agent,
+        'raven.job.target': job.target,
+        'raven.service.name': job.name,
+        ...(retryAttempt > 0 ? { 'raven.job.retry_attempt': retryAttempt } : {}),
+      },
+    }, async (jobSpan) => {
+      const runId = crypto.randomUUID();
+      const now = Date.now();
 
-    if (job.concurrencyKey) {
-      this.running.set(job.concurrencyKey, job.id);
-    }
+      if (job.concurrencyKey) {
+        this.running.set(job.concurrencyKey, job.id);
+      }
 
-    db.insertRun({
-      id: runId,
-      jobId: job.id,
-      jobName: job.name,
-      status: 'running',
-      startedAt: now,
-      dispatchId: null,
-      errorMessage: null,
-      assembledPrompt: null,
-      nextRunAt: null,
-      retryAttempt,
-    });
-
-    try {
-      log.info('Firing job', { job: job.name, agent: job.agent, target: job.target });
-
-      const scriptResults = await runScripts(job.scripts);
-      const assembled = assemblePrompt(job.prompt, job.resultPreference, scriptResults);
-
-      const receipt = await dispatch({
-        agent: job.agent,
-        id: job.target,
-        input: {
-          type: 'scheduler.job',
-          jobName: job.name,
-          message: assembled,
-        },
+      db.insertRun({
+        id: runId,
+        jobId: job.id,
+        jobName: job.name,
+        status: 'running',
+        startedAt: now,
+        dispatchId: null,
+        errorMessage: null,
+        assembledPrompt: null,
+        nextRunAt: null,
+        retryAttempt,
       });
 
-      db.getDb().prepare(
-        'UPDATE raven_job_runs SET assembled_prompt = ?, dispatch_id = ? WHERE id = ?'
-      ).run(assembled, (receipt as any)?.id ?? null, runId);
+      try {
+        log.info('Firing job', { job: job.name, agent: job.agent, target: job.target });
 
-      db.finishRun(runId, 'ok');
-      this.advanceJob(job, 'ok');
-      log.info('Job dispatched OK', { job: job.name });
-    } catch (err: any) {
-      const msg = err.message ?? String(err);
-      db.finishRun(runId, 'error', msg);
-      log.error('Job failed', { job: job.name, error: msg });
+        const prompt = job.promptFile
+          ? await tracer.startActiveSpan('promptFile', {
+              attributes: {
+                'raven.job.prompt_file': job.promptFile,
+              },
+            }, async (span) => {
+              try {
+                const proc = Bun.spawn(['markupdown', job.promptFile!], {
+                  stdout: 'pipe',
+                  stderr: 'pipe',
+                });
+                const [exitCode, stdout, stderr] = await Promise.all([
+                  proc.exited,
+                  new Response(proc.stdout).text(),
+                  new Response(proc.stderr).text(),
+                ]);
+                if (exitCode !== 0) {
+                  throw new Error(`markupdown failed (exit ${exitCode}): ${stderr.trim()}`);
+                }
+                const rendered = stdout.trim();
+                span.setAttribute('raven.job.prompt_file.length', rendered.length);
+                span.setStatus({ code: SpanStatusCode.OK });
+                return rendered;
+              } catch (err) {
+                span.setStatus({ code: SpanStatusCode.ERROR, message: (err as Error).message });
+                throw err;
+              } finally {
+                span.end();
+              }
+            })
+          : job.prompt;
 
-      const errors = job.consecutiveErrors + 1;
-      db.updateAfterRun(
-        job.id,
-        computeNextRun(job.scheduleData),
-        Date.now(),
-        'error',
-        errors,
-      );
+        const scriptResults = await runScripts(job.scripts);
+        const assembled = assemblePrompt(prompt, job.resultPreference, scriptResults);
 
-      if (job.maxRetries > 0 && retryAttempt < job.maxRetries) {
-        log.warn('Retrying job', { job: job.name, delayMs: job.retryDelayMs, attempt: retryAttempt + 1, maxRetries: job.maxRetries });
-        setTimeout(() => {
-          const fresh = db.getJob(job.id);
-          if (fresh && fresh.enabled) {
-            this.fire(fresh, retryAttempt + 1);
-          }
-        }, job.retryDelayMs);
+        trackAgentInstance(job.target, job.agent);
+        const ctx = otelContext.active();
+        const receipt = await dispatch({
+          agent: job.agent,
+          id: job.target,
+          input: {
+            type: 'scheduler.job',
+            jobName: job.name,
+            message: assembled,
+          },
+        });
+        const dispatchId = (receipt as any)?.dispatchId as string | undefined;
+        if (dispatchId) trackDispatchContext(dispatchId, ctx);
+
+        db.getDb().prepare(
+          'UPDATE raven_job_runs SET assembled_prompt = ?, dispatch_id = ? WHERE id = ?'
+        ).run(assembled, (receipt as any)?.dispatchId ?? null, runId);
+
+        db.finishRun(runId, 'ok');
+        this.advanceJob(job, 'ok');
+        log.info('Job dispatched OK', { job: job.name });
+        jobSpan.setStatus({ code: SpanStatusCode.OK });
+      } catch (err: any) {
+        const msg = err.message ?? String(err);
+        db.finishRun(runId, 'error', msg);
+        log.error('Job failed', { job: job.name, error: msg });
+        jobSpan.setStatus({ code: SpanStatusCode.ERROR, message: msg });
+        jobSpan.recordException(msg);
+
+        const errors = job.consecutiveErrors + 1;
+        db.updateAfterRun(
+          job.id,
+          computeNextRun(job.scheduleData),
+          Date.now(),
+          'error',
+          errors,
+        );
+
+        if (job.maxRetries > 0 && retryAttempt < job.maxRetries) {
+          log.warn('Retrying job', { job: job.name, delayMs: job.retryDelayMs, attempt: retryAttempt + 1, maxRetries: job.maxRetries });
+          setTimeout(() => {
+            const fresh = db.getJob(job.id);
+            if (fresh && fresh.enabled) {
+              this.fire(fresh, retryAttempt + 1);
+            }
+          }, job.retryDelayMs);
+        }
+      } finally {
+        if (job.concurrencyKey) {
+          this.running.delete(job.concurrencyKey);
+        }
+        jobSpan.end();
       }
-    } finally {
-      if (job.concurrencyKey) {
-        this.running.delete(job.concurrencyKey);
-      }
-    }
+    });
   }
 
   private advanceJob(job: JobRow, status: string): void {

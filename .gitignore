@@ -5,6 +5,9 @@ piracy.json5
 bin
 data
 .data
+*.db
+*.db-shm
+*.db-wal
 .flue-vite
 __pycache__
 .workspace

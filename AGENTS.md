@@ -75,6 +75,95 @@ Tools in `src/tools/` are typed Flue tool definitions. Each tool that calls the 
 2. Register it in `src/agent.ts`.
 3. If the tool calls Codex, import `getAccessToken()` from `src/auth/tokens.ts`.
 
+## Scheduled Jobs
+
+Jobs are managed through the raven gateway's HTTP API at `http://localhost:7284/api/jobs`. The CLI (`raven jobs`) handles listing, showing, enabling, disabling, deleting, and triggering — but creation is done via the API directly.
+
+### Creating a Job
+
+`POST /api/jobs` with a JSON body:
+
+```json
+{
+  "name": "my-job",
+  "agent": "raven-lead",
+  "prompt": "What the agent should do when the job fires.",
+  "resultPreference": "How the agent should deliver the result.",
+  "target": "telegram:v1:regular:chat:<chatId>:thread::direct:",
+  "schedule": { ... },
+  "description": "Optional human-readable description",
+  "enabled": true,
+  "deleteAfterRun": false,
+  "tags": ["optional", "tags"]
+}
+```
+
+Required fields: `name` (kebab-case), `agent`, `prompt`, `resultPreference`, `target`, `schedule`.
+
+### Schedule Types
+
+**One-shot at a specific time:**
+```json
+{ "kind": "at", "at": "2026-06-23T07:00:00-07:00" }
+```
+
+**Recurring daily/weekly with time of day:**
+```json
+{
+  "kind": "weekday",
+  "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+  "timeOfDay": "07:00",
+  "tz": "America/Los_Angeles"
+}
+```
+Omit `days` and use `"everyNDays": 2` for every-N-days patterns.
+
+**Cron expression:**
+```json
+{ "kind": "cron", "expr": "0 7 * * *", "tz": "America/Los_Angeles" }
+```
+
+**Fixed interval:**
+```json
+{ "kind": "every", "everyMs": 3600000 }
+```
+
+**Relative delay (converted to `at` internally):**
+```json
+{ "kind": "relative", "delayMs": 60000 }
+```
+
+### Target Format
+
+The `target` is a conversation key that tells the agent where to send results. For Telegram:
+```
+telegram:v1:regular:chat:<chatId>:thread::direct:
+```
+Find existing chat IDs by querying the `flue_sessions` table in `data/flue.db`.
+
+### Updating a Job
+
+`PUT /api/jobs/<name>` with any subset of fields to update.
+
+### CLI Management
+
+```
+raven jobs list              # List all jobs
+raven jobs show <name>       # Show job details + recent runs
+raven jobs enable <name>     # Enable a disabled job
+raven jobs disable <name>    # Disable a job
+raven jobs delete <name>     # Delete a job
+raven jobs trigger <name>    # Trigger a manual run now
+raven jobs history [name]    # Show execution history
+```
+
+### Options
+
+- `deleteAfterRun`: If true, the job is removed after a successful one-shot run.
+- `maxRetries` / `retryDelayMs`: Retry on failure (default: no retries).
+- `concurrencyKey`: Prevents overlapping runs for jobs sharing the same key.
+- `scripts`: Pre/post-flight shell commands. Output can be injected into the prompt.
+
 ## Environment
 
 Required env vars are listed in the README. The `.env.example` file is the source of truth for what's needed.

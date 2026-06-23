@@ -60,22 +60,29 @@ export type ScriptDef = v.InferOutput<typeof ScriptDef>;
 
 // --- Job creation input ---
 
-export const CreateJobInput = v.object({
-  name: v.pipe(v.string(), v.minLength(1), v.regex(/^[a-z0-9]+(-[a-z0-9]+)*$/)),
-  agent: v.pipe(v.string(), v.minLength(1)),
-  prompt: v.pipe(v.string(), v.minLength(1)),
-  resultPreference: v.pipe(v.string(), v.minLength(1)),
-  target: v.pipe(v.string(), v.minLength(1)),
-  schedule: Schedule,
-  description: v.optional(v.string(), ''),
-  enabled: v.optional(v.boolean(), true),
-  scripts: v.optional(v.array(ScriptDef), []),
-  deleteAfterRun: v.optional(v.boolean(), false),
-  maxRetries: v.optional(v.pipe(v.number(), v.minValue(0)), 0),
-  retryDelayMs: v.optional(v.pipe(v.number(), v.minValue(1000)), 60_000),
-  concurrencyKey: v.optional(v.string()),
-  tags: v.optional(v.array(v.string()), []),
-});
+export const CreateJobInput = v.pipe(
+  v.object({
+    name: v.pipe(v.string(), v.minLength(1), v.regex(/^[a-z0-9]+(-[a-z0-9]+)*$/)),
+    agent: v.pipe(v.string(), v.minLength(1)),
+    prompt: v.optional(v.string(), ''),
+    promptFile: v.optional(v.string()),
+    resultPreference: v.pipe(v.string(), v.minLength(1)),
+    target: v.pipe(v.string(), v.minLength(1)),
+    schedule: Schedule,
+    description: v.optional(v.string(), ''),
+    enabled: v.optional(v.boolean(), true),
+    scripts: v.optional(v.array(ScriptDef), []),
+    deleteAfterRun: v.optional(v.boolean(), false),
+    maxRetries: v.optional(v.pipe(v.number(), v.minValue(0)), 0),
+    retryDelayMs: v.optional(v.pipe(v.number(), v.minValue(1000)), 60_000),
+    concurrencyKey: v.optional(v.string()),
+    tags: v.optional(v.array(v.string()), []),
+  }),
+  v.check(
+    (input) => !!(input.prompt || input.promptFile),
+    'Either prompt or promptFile must be provided',
+  ),
+);
 
 export type CreateJobInput = v.InferOutput<typeof CreateJobInput>;
 
@@ -83,7 +90,8 @@ export type CreateJobInput = v.InferOutput<typeof CreateJobInput>;
 
 export const UpdateJobInput = v.object({
   agent: v.optional(v.pipe(v.string(), v.minLength(1))),
-  prompt: v.optional(v.pipe(v.string(), v.minLength(1))),
+  prompt: v.optional(v.string()),
+  promptFile: v.optional(v.nullable(v.string())),
   resultPreference: v.optional(v.pipe(v.string(), v.minLength(1))),
   target: v.optional(v.pipe(v.string(), v.minLength(1))),
   schedule: v.optional(Schedule),
@@ -108,6 +116,7 @@ export interface JobRow {
   enabled: boolean;
   agent: string;
   prompt: string;
+  promptFile: string | null;
   resultPreference: string;
   target: string;
   scripts: ScriptDef[];

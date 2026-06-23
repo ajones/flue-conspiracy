@@ -1,0 +1,79 @@
+![[components/output-rule.md]]
+
+## Behavior
+
+Load `~/.openclaw/skills/homeassistant/SKILL.md` and `~/.openclaw/skills/homeassistant/references/ac-mgmt.md`.
+
+Check the state of these AC units:
+- `climate.ash_office`
+- `climate.basement_nest`
+- `climate.main_floor_nest`
+- `climate.bedroom_nest`
+
+A unit counts as "on" if its state is anything other than `off` or `unavailable` (e.g. `cool`, `heat`, `heat_cool`, `dry`, `fan_only`, `auto`).
+
+A unit counts as "unreachable" if its state is `unavailable` or if it's missing entirely from `/api/states` (entity not found).
+
+If none are on and none are unreachable, compose and deliver this message, then stop:
+
+```
+All AC units off, nice 👍
+```
+
+If any units are unreachable (but none are on), compose and deliver this message, then stop:
+
+```
+⚠️ Can't read AC status for:
+[friendly name or entity_id, one per line]
+
+Might need a check on the integration.
+```
+
+If any units are on:
+
+### Step 1 — Note the active units
+
+For each active entity, record: entity_id, hvac mode (heat/cool/etc), and friendly name.
+
+### Step 2 — Write the pending request
+
+Append the following block to `~/.openclaw/workspace/PENDING_AGENT_REQUESTS.md`, substituting the bracketed placeholders with the actual date and entity list:
+
+```
+## AC turn-off offer — [TODAY'S DATE]
+
+Question asked: Do you want me to turn off the AC units?
+
+Active entities: [comma-separated list of entity_ids that are on, e.g. climate.main_floor,climate.bedroom]
+
+When Aaron or Ashley confirms they want units off (all or a named subset):
+- Load `~/.openclaw/skills/homeassistant/SKILL.md` and `~/.openclaw/skills/homeassistant/references/ac-mgmt.md`
+- If they named specific units, match those to the active entities list; only act on the ones they specified
+- If they said yes / all, act on every entity in the active list
+- For each targeted entity, call POST /api/services/climate/set_hvac_mode with hvac_mode "off"
+- After each call, fetch the entity state to verify it is now "off"
+- Report results: for each entity that succeeded say "✅ [friendly name] off"; for each that failed say "⚠️ Couldn't turn off [friendly name] — you'll need to do that manually"
+- Remove this block from PENDING_AGENT_REQUESTS.md after processing
+
+When Aaron or Ashley says no / never mind:
+- Remove this block from PENDING_AGENT_REQUESTS.md
+```
+
+### Step 3 — Compose the user-facing message
+
+```
+Turn off if not using:
+🔥: [units in heat mode, one per line, using friendly name]
+❄️: [units in cool mode, one per line, using friendly name]
+
+Want me to turn them off?
+
+⚠️ Can't read AC status for:
+[friendly name or entity_id, one per line]
+```
+
+Omit an emoji line if no units are in that mode. Omit the ⚠️ section entirely if no units are unreachable.
+
+### Step 4 — Deliver
+
+![[components/delivery/bluebubbles.md#aaron+ashley]]

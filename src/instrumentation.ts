@@ -5,9 +5,20 @@ import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import type { SpanExporter, ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import type { ExportResult } from '@opentelemetry/core';
+import { type Context, context as otelContext, trace as otelTrace } from '@opentelemetry/api';
 import { createOpenTelemetryObserver } from '@flue/opentelemetry';
 import { observe } from '@flue/runtime';
 import { getAgentName } from './agent-names.ts';
+
+const dispatchContexts = new Map<string, Context>();
+
+export function trackDispatchContext(dispatchId: string, ctx: Context): void {
+  dispatchContexts.set(dispatchId, ctx);
+}
+
+export function untrackDispatchContext(dispatchId: string): void {
+  dispatchContexts.delete(dispatchId);
+}
 
 const ATTR_MAX_LENGTH = 16_000;
 const LARGE_ATTRS = new Set([
@@ -52,17 +63,20 @@ class AgentServiceNameExporter implements SpanExporter {
       const instanceId = span.attributes['flue.instance.id'];
       const provider = span.attributes['gen_ai.provider.name'];
       const toolName = span.attributes['flue.tool.name'];
-      const serviceName = typeof provider === 'string'
-        ? provider
-        : typeof toolName === 'string'
-          ? 'tools'
-        : typeof taskAgent === 'string'
-          ? taskAgent
-          : typeof taskId === 'string'
-            ? this.taskAgentMap.get(taskId)
-            : typeof instanceId === 'string'
-              ? getAgentName(instanceId)
-              : undefined;
+      const explicit = span.attributes['raven.service.name'];
+      const serviceName = typeof explicit === 'string'
+        ? explicit
+        : typeof provider === 'string'
+          ? provider
+          : typeof toolName === 'string'
+            ? 'tools'
+          : typeof taskAgent === 'string'
+            ? taskAgent
+            : typeof taskId === 'string'
+              ? this.taskAgentMap.get(taskId)
+              : typeof instanceId === 'string'
+                ? getAgentName(instanceId)
+                : undefined;
 
       const truncated = truncateAttributes(span.attributes as Record<string, unknown>);
       const overrides: Record<string, PropertyDescriptor> = {};
@@ -113,7 +127,20 @@ if (process.env.OTEL_DISABLED !== 'true') {
 
   observe(createOpenTelemetryObserver({
     exportContent: (event) => event,
+    resolveRootContext: (event: { dispatchId?: string }) => {
+      if (event.dispatchId) {
+        const stored = dispatchContexts.get(event.dispatchId);
+        if (stored) return stored;
+      }
+      return undefined;
+    },
   }));
+
+  observe((event: { type: string; dispatchId?: string }) => {
+    if (event.type === 'operation' && event.dispatchId) {
+      dispatchContexts.delete(event.dispatchId);
+    }
+  });
 
   process.on('SIGTERM', () => sdk.shutdown());
   process.on('SIGINT', () => sdk.shutdown());

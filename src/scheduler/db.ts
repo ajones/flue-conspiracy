@@ -14,8 +14,17 @@ export function getDb(): DatabaseInstance {
     db.exec('PRAGMA journal_mode = WAL');
     db.exec('PRAGMA foreign_keys = ON');
     ensureTables(db);
+    migrate(db);
   }
   return db;
+}
+
+function migrate(db: DatabaseInstance) {
+  const cols = db.prepare("PRAGMA table_info(raven_jobs)").all() as { name: string }[];
+  const has = new Set(cols.map(c => c.name));
+  if (!has.has('prompt_file')) {
+    db.exec("ALTER TABLE raven_jobs ADD COLUMN prompt_file TEXT");
+  }
 }
 
 function ensureTables(db: DatabaseInstance) {
@@ -82,6 +91,7 @@ function rowToJob(row: any): JobRow {
     enabled: !!row.enabled,
     agent: row.agent,
     prompt: row.prompt,
+    promptFile: row.prompt_file ?? null,
     resultPreference: row.result_preference,
     target: row.target,
     scripts: JSON.parse(row.scripts) as ScriptDef[],
@@ -166,13 +176,13 @@ export function createJob(input: CreateJobInput, nextRunAt: number | null): JobR
 
   db.prepare(`
     INSERT INTO raven_jobs (
-      id, name, description, enabled, agent, prompt, result_preference, target,
+      id, name, description, enabled, agent, prompt, prompt_file, result_preference, target,
       scripts, schedule_kind, schedule_data, delete_after_run, max_retries,
       retry_delay_ms, concurrency_key, tags, created_at, updated_at, next_run_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id, input.name, input.description, input.enabled ? 1 : 0,
-    input.agent, input.prompt, input.resultPreference, input.target,
+    input.agent, input.prompt, input.promptFile ?? null, input.resultPreference, input.target,
     JSON.stringify(input.scripts), input.schedule.kind, JSON.stringify(input.schedule),
     input.deleteAfterRun ? 1 : 0, input.maxRetries,
     input.retryDelayMs, input.concurrencyKey ?? null, JSON.stringify(input.tags),
@@ -192,6 +202,7 @@ export function updateJob(id: string, patch: UpdateJobInput, nextRunAt?: number 
 
   if (patch.agent !== undefined) { sets.push('agent = ?'); params.push(patch.agent); }
   if (patch.prompt !== undefined) { sets.push('prompt = ?'); params.push(patch.prompt); }
+  if (patch.promptFile !== undefined) { sets.push('prompt_file = ?'); params.push(patch.promptFile); }
   if (patch.resultPreference !== undefined) { sets.push('result_preference = ?'); params.push(patch.resultPreference); }
   if (patch.target !== undefined) { sets.push('target = ?'); params.push(patch.target); }
   if (patch.description !== undefined) { sets.push('description = ?'); params.push(patch.description); }
