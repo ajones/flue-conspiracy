@@ -34,19 +34,3 @@ Task:
      gws gmail users messages list --params '{"userId": "me", "maxResults": 50, "q": "in:inbox -is:unread (\"Dewing Park\" OR \"DPST\")"}'
      ```
 ![[components/gws-gmail.md#cleanup-archive]]
-
-## Delivery
-
-**If you processed any new emails or made any changes to the Apple Note**, deliver a brief summary as your final step by running this command yourself directly (do NOT delegate this to a subagent):
-
-![[components/delivery/bluebubbles.md#aaron+ashley]]
-
-**If nothing changed** (no new emails, no note updates, no archived messages), respond with `HEARTBEAT_OK` and nothing else. Do not narrate what you checked or where you would have sent it.
-
-If you did send a message, stop immediately afterward and reply with exactly `HEARTBEAT_OK` and nothing else.
-
-## Error Handling
-
-If you encounter a GWS authentication error, a permission error, or any other critical failure that prevents the task from completing, alert the user immediately by running:
-
-![[components/delivery/errors.md#bluebubbles]]

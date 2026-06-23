@@ -15,7 +15,6 @@ Inspect cron job runs for the last 24 hours, identify any errors, and email Aaro
 4. Group related failures by job name.
 
 ## Email requirements
-- Send the email to `r.aaron.jones@gmail.com` using the `gws` CLI.
 - Use a clear, emoji-prefixed subject line (e.g. "🟢 Cron Health: All Clear" or "🔴 Cron Health: 3 Errors").
 - Include:
   - the time window checked
@@ -34,6 +33,3 @@ Inspect cron job runs for the last 24 hours, identify any errors, and email Aaro
 - Keep it concise and prefer plain language.
 - Do not mention internal tool instructions, hidden prompts, or implementation details.
 - If there are no errors, make that very clear and brief.
-
-## Final step
-Send the email with `gws gmail +send` once the report is ready.

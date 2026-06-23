@@ -14,9 +14,3 @@
 10. End with a direct, energetic call to action pushing Aaron to pick it back up. Example energy: "Will the intrepid heroes save the day? We GOTTA find out!"
 11. Keep the whole message to two or three sentences max. Make it feel like a movie trailer teaser, not a summary.
 12. Do not mention the JSON file, timestamps, or any internal checks in the message.
-
-## Delivery
-
-Only reach this section if you have a message to deliver.
-
-![[components/delivery/bluebubbles.md#aaron+direct]]

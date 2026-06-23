@@ -9,7 +9,3 @@
 5. Before delivering, ensure `PENDING_AGENT_REQUESTS.md` has a new request block for this exact nudge, including a `created_at:` timestamp and the instruction that the next substantive reply in this thread should be treated as the answer.
 6. Keep the nudge short and practical. No timestamps in the visible message.
 7. Do not mention the pending-request machinery.
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+direct]]

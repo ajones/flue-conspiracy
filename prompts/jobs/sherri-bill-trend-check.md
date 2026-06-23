@@ -21,7 +21,3 @@ Follow this order:
 - Do not include more than one trend.
 - Use calm, matter-of-fact language. Avoid alarming or urgent framing — no words like "worsening quickly," "rapidly," "deteriorating," or similar escalating language. State the pattern plainly without editorializing about severity or trajectory.
 - Do not mention any group name, channel name, delivery target, or routing details in the message text or output.
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+sherri]]

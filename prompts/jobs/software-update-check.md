@@ -20,7 +20,3 @@ Software updates pending:
 • macOS 15.5.1
 • Safari 18.4
 ```
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+direct]]

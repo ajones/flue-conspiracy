@@ -101,8 +101,3 @@ Examples (for illustration only — don’t hardcode):
 - `Morning sweep: looks like watering flowers and the LLC payment are still open — did those get done?`
 
 Remember: your **only** visible output is the final one-line (or two-line) message to the group, and you must send nothing at all if there are no genuinely incomplete tasks.
-
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+ashley]]

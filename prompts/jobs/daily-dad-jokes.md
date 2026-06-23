@@ -23,8 +23,3 @@ Every time this job runs, follow the `dad-jokes` skill to fetch a new dad joke a
 3. **Respond for delivery**
    - Return the final dad joke text as the message to send.
    - Do not add any extra commentary or explanation.
-
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+ashley]]

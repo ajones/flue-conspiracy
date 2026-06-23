@@ -26,7 +26,3 @@ If alerts exist, return only short bullet points in this shape:
 - <why it matters>. Read: <link>
 
 Keep it terse. No extra commentary.
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+sherri]]

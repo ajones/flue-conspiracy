@@ -36,9 +36,3 @@ Task:
 ![[components/gws-gmail.md#cleanup-archive]]
 
 ![[components/gws-gmail.md#finish]]
-
-## Error Handling
-
-If you encounter a GWS authentication error, a permission error, or any other critical failure that prevents the task from completing, alert the user immediately by running:
-
-![[components/delivery/errors.md#bluebubbles]]

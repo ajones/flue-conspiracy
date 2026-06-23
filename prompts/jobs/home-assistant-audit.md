@@ -12,7 +12,3 @@ Read the following files before proceeding:
 2. `~/.openclaw/skills/homeassistant/references/audit.md` — full audit workflow: integrations, battery, updates, and vents
 
 Follow the audit workflow in `references/audit.md` exactly. The environment variables `HOMEASSISTANT_URL` and `HOMEASSISTANT_TOKEN` are available.
-
-## Deliver
-
-![[components/delivery/bluebubbles.md#aaron+direct]]

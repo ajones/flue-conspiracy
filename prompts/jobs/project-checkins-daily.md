@@ -12,9 +12,3 @@ Read `~/.openclaw/workspace/ACTIVE_PROJECTS.md` as the source of truth for proje
 4. If there are one or more in-progress projects, compose a short check-in asking for a status update on each in-progress project.
 5. After the user responds in the session, update `ACTIVE_PROJECTS.md` by recording the user's response next to the matching project so progress is tracked over time and nothing gets forgotten.
 6. Keep the outgoing message short and practical.
-
-## Delivery
-
-Only reach this section if you have a message to deliver.
-
-![[components/delivery/bluebubbles.md#aaron+direct]]

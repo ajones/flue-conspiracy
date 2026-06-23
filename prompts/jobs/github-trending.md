@@ -25,7 +25,3 @@
    - The description is plain language, no labels like "Description:".
    - Do not add any other text, headers, or commentary beyond this template.
 6. After composing the message (and before or immediately after delivering it), append a new line to `~/.openclaw/workspace/.github-trending` in the format `<repo url>, <short description>` — using the same description you put in the message. Preserve all existing lines — only add the new one at the end.
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+direct]]

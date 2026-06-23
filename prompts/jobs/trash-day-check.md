@@ -25,11 +25,3 @@ This is a security camera looking down the driveway toward the street. The drive
 If the cans are still in the driveway, compose a short, casual reminder — 1–2 sentences — that 🗑️ trash pickup is today/tomorrow (whichever is accurate based on the current day/time) and the cans still need to be rolled out. Keep it friendly and brief.
 
 If the cans are already out at the curb, compose a short congratulations — 1–2 sentences — for Aaron and Ashley, acknowledging that the trash is handled. Keep it warm and brief.
-
-## Delivery
-
-Only reach this section if the trash cans are clearly identified.
-
-`PAYLOAD` is the alert message you composed above.
-
-![[components/delivery/bluebubbles.md#aaron+ashley]]

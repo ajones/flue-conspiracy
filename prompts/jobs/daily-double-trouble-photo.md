@@ -37,13 +37,5 @@ This script handles exporting the photo, sending the caption text, sending the p
 - You must actually run the bash commands above in this session. Do not just output them or describe what they do.
 - Do NOT spawn any other agents or sub-processes beyond the shell commands shown here; perform all work directly.
 - If `photos-album-random.sh` returns no results, retry once. If it still fails, skip this run.
-- If `photos-send-imessage.sh` fails, deliver the error via session-agent-turn (see Delivery below) — do not retry.
+- If `photos-send-imessage.sh` fails, do not retry.
 - If the script succeeds, respond with `HEARTBEAT_OK` and nothing else. Do NOT narrate what you did, what photo you picked, what caption you used, or where it was sent. No summaries, no confirmations, no meta-commentary.
-
-## Delivery
-
-**Only reach this section if `photos-send-imessage.sh` failed.**
-
-![[components/delivery/errors.md#bluebubbles]]
-
-**If the script succeeded**, respond with `HEARTBEAT_OK` and nothing else.

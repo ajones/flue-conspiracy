@@ -99,8 +99,3 @@ And `<CODY_TEMP_STATUS>` / `<LEO_TEMP_STATUS>` are each one of:
 - Do not modify any files or cron jobs.
 - Do not attempt to change any device state.
 - Treat this file as the full and only specification for what to do during this cron run.
-
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+ashley]]

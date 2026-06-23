@@ -33,11 +33,3 @@ Scan the returned messages for any mention that the front flowers or front deck 
 **Step 3 – Compose nudge**
 
 If no watering mention was found, compose a short, casual evening check-in asking if the flowers on the front deck have been watered yet today. One or two sentences max. Keep it friendly and low-key.
-
-## Delivery
-
-Only reach this section if it did not rain and you have a message to compose.
-
-`PAYLOAD` is the clean check-in message you composed above.
-
-![[components/delivery/bluebubbles.md#aaron+ashley]]

@@ -73,7 +73,3 @@ Want me to turn them off?
 ```
 
 Omit an emoji line if no units are in that mode. Omit the ⚠️ section entirely if no units are unreachable.
-
-### Step 4 — Deliver
-
-![[components/delivery/bluebubbles.md#aaron+ashley]]

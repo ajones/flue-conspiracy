@@ -33,9 +33,3 @@ When Aaron replies:
    - Write the date as a `check_after: YYYY-MM-DD` property line directly below the project's status line (before the `- Updates:` line). If a `check_after` line already exists, replace it.
 4. Remove this block from PENDING_AGENT_REQUESTS.md after processing.
 ```
-
-## Delivery
-
-**Only reach this section if you have a message to deliver.**
-
-![[components/delivery/bluebubbles.md#aaron+direct]]

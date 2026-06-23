@@ -53,7 +53,3 @@ Use `INDEX` to select the corresponding message from the numbered list below (1�
 19. 🗳️ The June 2 early voting deadline is not a suggestion and democracy is not a spectator sport. Get off the bench, get your ballot in, and make these GOP bastards earn every loss. Vote tomorrow.
 
 20. 🗳️ Last fucking call — not really, you have until June 2, but holy shit stop waiting. Early voting is open. The fascists are organized. Your ballot is your weapon. Use it or shut up forever.
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+ashley]]

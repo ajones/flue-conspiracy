@@ -24,7 +24,3 @@ Before writing the message, read the last 10 entries from `BILL_OBSERVATIONS.md`
 - Use the current file contents; do not rely on old copies.
 - If the sheet changes, use the latest version.
 - Do not mention routing, channels, or delivery details in the message.
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+sherri]]

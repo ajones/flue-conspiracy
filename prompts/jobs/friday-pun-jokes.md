@@ -38,8 +38,3 @@ Every time this job runs (Fridays), follow the `dad-jokes` skill but bias strong
 6. **Respond for delivery**
    - Return only the final pun joke text as the message to send.
    - No extra commentary, labels, or metadata.
-
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+ashley]]

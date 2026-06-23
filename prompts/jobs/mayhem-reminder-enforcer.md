@@ -131,14 +131,6 @@ If nothing changed, still log the entry — the file serves as an audit trail.
 
 ---
 
-## Delivery
-
-**Only reach this section if any auto-fixes were applied or new cron jobs were created.**
-
-![[components/delivery/bluebubbles.md#aaron+direct]]
-
-**If nothing changed**, respond with `HEARTBEAT_OK` and nothing else. Do not narrate what was checked or what the enforcement log says.
-
 ## Safety
 
 - Do not delete cron jobs. Only modify fields to fix validation errors.

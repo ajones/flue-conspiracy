@@ -25,17 +25,3 @@ When Aaron replies:
 - **Floor:** never set `check_after` to today or a past date — minimum is tomorrow.
 - Remove this block from PENDING_AGENT_REQUESTS.md after processing.
 ```
-
-## Delivery
-
-Only reach this section if you have a message to deliver (step 4 did not exit early).
-
-Run the following command yourself directly (do NOT delegate this to a subagent):
-
-```bash
-~/.openclaw/skills/cron-creator/scripts/session-agent-turn.sh \
-  "agent:main:bluebubbles:direct:+15127407713" \
-  --payload "Daily projects check. Deliver this summary to Aaron: <your composed message>. Do not mention any channel, routing, or delivery target in the message."
-```
-
-After the script completes, reply with exactly `HEARTBEAT_OK` and nothing else.

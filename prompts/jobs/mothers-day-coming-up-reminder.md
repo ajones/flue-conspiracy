@@ -9,7 +9,3 @@ Requirements:
 - Mention that Mother's Day is coming up.
 - Do not mention any channel, group, session, or routing details.
 - Do not include meta-commentary.
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+direct]]

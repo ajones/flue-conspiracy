@@ -210,7 +210,3 @@ Lamorinda
 - Never mention tools, hosts, file paths, or error messages.
 
 ![[components/draft-and-review.md]]
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+ashley]]

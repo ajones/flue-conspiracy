@@ -7,7 +7,3 @@
 - If there is no observation for yesterday, write a short helpful nudge reminding them to add Bill’s observation for yesterday.
 - Keep the nudge brief and natural.
 - Do not mention any group name, channel name, delivery target, or routing details in the message text or output.
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+sherri]]

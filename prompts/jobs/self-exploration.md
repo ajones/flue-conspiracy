@@ -54,7 +54,3 @@ The design should feel **intentional and alive**. It should look like something 
 **Fallback:** If `thelabmatrix` is unreachable or returns an error, skip the display step gracefully — do not fall back to a single red LED.
 
 Finally, save the design file (if you used a bitmap) and record one sentence in your down-time log: what you made, what inspired it, and which approach you used.
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+direct]]

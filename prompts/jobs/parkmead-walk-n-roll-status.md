@@ -52,8 +52,3 @@ Instructions:
    ```
 
 6. Output exactly that summary text as your final reply for this cron run. Do not include any extra explanation, metadata, or JSON, just the human-readable message.
-
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+direct]]

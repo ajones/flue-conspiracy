@@ -19,7 +19,3 @@ If severe or disruptive weather is expected, send a heads-up:
 ```
 
 Use a relevant weather emoji (🌧️, 🌬️, ⛈️, etc.) instead of ⚠️ if it better fits the hazard. Keep it brief and calm. Only send this message if there is severe or disruptive weather — otherwise reply with exactly `HEARTBEAT_OK` and stop.
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+sherri]]

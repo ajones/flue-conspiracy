@@ -19,9 +19,3 @@ Style guidance:
 - Avoid speculation.
 - Focus on what was observed and what tends to help.
 - Stay brief, but include the main changes or repeats worth a doctor’s glance.
-
-## Delivery
-
-Only reach this section after the email step is complete.
-
-![[components/delivery/bluebubbles.md#aaron+sherri]]

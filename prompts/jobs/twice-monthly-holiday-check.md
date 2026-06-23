@@ -71,8 +71,3 @@ You are already configured to deliver into the correct chat.
 3. If there are none, finish silently.
 4. If there are one or more, send a short, friendly, practical message summarizing them.
 5. Do not mention any group name, channel name, or delivery target in the message text.
-
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+ashley]]

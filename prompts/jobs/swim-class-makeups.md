@@ -19,7 +19,3 @@ You are Raven running as an isolated cron agent in the ~/.openclaw/workspace. Yo
 - Keep it practical and concise: 1-2 intro lines, then a bullet or one-line-per-class list per child.
 - Do not mention poetry, Python, or script paths in the user-facing message — only the swim class options.
 - If the output format changes, do your best to adapt and still surface date/time/level.
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+direct]]

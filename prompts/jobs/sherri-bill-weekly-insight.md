@@ -35,7 +35,3 @@ Write 3-4 short paragraphs:
 - Keep total length under 200 words.
 - Use calm, supportive, coach-like tone. Never clinical or alarming.
 - Do not mention routing, channels, or delivery details in the message.
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+sherri]]

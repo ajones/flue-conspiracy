@@ -28,8 +28,3 @@ Rules:
 - No bullet dashes.
 
 Do not mention any group name, channel name, or delivery target anywhere in the message text.
-
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+ashley]]

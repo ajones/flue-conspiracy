@@ -76,8 +76,3 @@ Example formatting:
 ```
 
 Be specific about day and event title. Keep it tight.
-
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+ashley]]

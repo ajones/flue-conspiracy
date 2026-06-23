@@ -27,11 +27,3 @@ Identify each can individually by color (blue recycling, black trash) and note i
 If one or both cans are still out at the curb, compose a short, casual nudge — 1–2 sentences — naming which can(s) (blue recycling and/or black trash) are still out at the street and need to be brought back in. Keep it friendly and brief.
 
 If both cans are back in the driveway, compose a short, funny, snarky, celebratory congratulations — 1–2 sentences — for Aaron and Ashley on successfully bringing both cans back in. Have fun with it.
-
-## Delivery
-
-Only reach this section if the trash cans are clearly identified.
-
-`PAYLOAD` is the message you composed above.
-
-![[components/delivery/bluebubbles.md#aaron+ashley]]

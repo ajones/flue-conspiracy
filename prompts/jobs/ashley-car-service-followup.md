@@ -9,7 +9,3 @@ Ask this exact question:
 Ashley’s car service — did the Monday appointment happen, or is anything still pending? Any blocker left, and what’s the next step if it’s not done yet?
 
 ![[components/pending-agent-requests.md]]
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+direct]]

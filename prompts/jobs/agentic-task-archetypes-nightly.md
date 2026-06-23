@@ -92,8 +92,3 @@ High-level steps:
    - "No new archetypes tonight, but I added fresh examples for automation design and personal ops tasks from the last 48 hours."
 
    Do **not** include raw message excerpts, file paths, or implementation details in the final reply—only the high-level summary of what changed in the archetypes file.
-
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+direct]]

@@ -22,7 +22,3 @@ If you send a message:
 - Include the two actions: cover the outdoor couches and pick up anything that can't get wet.
 - Do not mention internal reasoning or forecast details unless useful.
 - Do not mention delivery, routing, or any internal system details.
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+direct]]

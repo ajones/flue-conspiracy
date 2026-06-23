@@ -125,8 +125,3 @@ Detailed steps:
    - "Updated the automation-opportunities table (11 rows total), with two new ideas under Automation Design × Workflow orchestrator agents and Personal Ops × Calendar triage agents."
 
 Produce only this short summary as your final reply; the updated table lives in the archetypes doc itself.
-
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+direct]]

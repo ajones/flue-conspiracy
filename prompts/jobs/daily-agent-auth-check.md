@@ -19,7 +19,3 @@ Use the `auth-check` skill for this cron run. The skill owns the auth-status and
 - Do not refresh tokens or modify auth files.
 - Do not include raw access or refresh tokens in any output.
 - Keep the result to the script's final summary text.
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+direct]]

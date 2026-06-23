@@ -39,7 +39,3 @@ YYYY-MM-DD | <2-5 word summary of the angle used>
 - Do not send a weather alert — that is handled by a separate cron. Only weave weather context into caregiving advice when relevant.
 - Warm but not patronizing. Practical, not preachy.
 - Do not mention routing, channels, or delivery details in the message.
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+sherri]]

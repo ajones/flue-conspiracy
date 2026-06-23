@@ -17,7 +17,3 @@ Use the Encore Gym skill to check Cody's current makeup situation.
    - reminds that open gym makeups need to be scheduled in advance
    - offers to pull day/time availability on request
    - stays concise
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+ashley]]

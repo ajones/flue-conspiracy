@@ -107,8 +107,3 @@ Avoid:
 - Opening that box now feels like breaking the seal on an ancient evil.
 - The odor coming off that thing feels medically relevant.
 - The litter box currently looks like something archaeologists would uncover with brushes.
-
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+ashley]]

@@ -53,8 +53,3 @@ Example:
 `Got Leo to BJJ. Took care of Cody's finger. Stayed on top of school paperwork.
 
 You two are doing the work.`
-
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+ashley]]

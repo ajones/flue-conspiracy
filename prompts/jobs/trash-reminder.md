@@ -32,11 +32,3 @@ When Aaron replies:
 ```
 
 Substitute today's date (YYYY-MM-DD) in the block header.
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+direct]]
-
-The payload you pass to session-agent-turn.sh must be an agent-turn instruction, not a direct user message. Use something like:
-
-`"Ask Aaron if he took out the trash, but do it in a funny creative way — a haiku, a dramatic movie quote rewritten about trash, a Shakespearean monologue, a breaking-news bulletin, or similar. Keep it to 3–5 lines and end with a clear question. Pick a different style each week."`

@@ -7,9 +7,3 @@
 3. Look for an `error` object with a `message` field.
 4. If `error.message` is present, deliver a brief failure notice to Aaron that includes the error message and any actionable next step if obvious.
 5. If there is no error, output exactly `HEARTBEAT_OK` and stop.
-
-## Delivery
-
-Only reach this section if you have a failure message to deliver.
-
-![[components/delivery/bluebubbles.md#aaron+direct]]

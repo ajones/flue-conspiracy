@@ -46,7 +46,3 @@ Bad examples:
 - I checked the forecast and compared it to the last few days.
 - Sending this to Mayhem MGMT.
 - No significant change detected.
-
-## Delivery
-
-![[components/delivery/bluebubbles.md#aaron+ashley]]

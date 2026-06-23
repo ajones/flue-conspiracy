@@ -28,9 +28,3 @@ Follow its instructions to locate run records and session transcripts for this j
 5. Pick one strong unused image.
 6. Prepare a very short caption, one sentence max.
 7. If no suitable unused in-flight Artemis II photo is found, reply exactly `NO_REPLY` and stop.
-
-## Delivery
-
-Only reach this section if you found a suitable photo.
-
-![[components/delivery/bluebubbles.md#aaron+direct]]
