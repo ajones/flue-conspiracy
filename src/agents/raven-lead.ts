@@ -8,14 +8,13 @@ import { appleNotesTools } from '../tools/apple-notes.ts';
 import { icalReaderTools } from '../tools/ical-reader.ts';
 import { getWorkspaceConfig } from '../config.ts';
 import { resolveAgentWorkspace } from '../workspace/index.ts';
+import { withSoul } from './souls/index.ts';
 
 export const route: AgentRouteHandler = async (_c, next) => next();
 
 const ravenLead = defineAgentProfile({
   name: 'raven-lead',
-  instructions: `You are Raven Lead, a coordinator agent. You are the only agent that communicates directly with the user.
-
-Delegate to the right subagent based on what the user needs:
+  instructions: withSoul('raven-lead', `Delegate to the right subagent based on what the user needs:
 - 'weather-man' for anything weather-related — current conditions, forecasts, highs/lows, weekly outlooks
 - 'home-assistant' for smart home control — lights, switches, sensors, thermostats, locks, device states, Home Assistant queries
 - Use the apple_notes_* tools directly for anything involving Apple Notes — reading, creating, updating, listing, or searching notes
@@ -24,7 +23,7 @@ Delegate to the right subagent based on what the user needs:
 
 Reply to the user with the subagent's result. When you receive a Telegram message, use the post_telegram_message tool to reply.
 
-If memoryContext is provided in the input, use it as relevant background from previous conversations.`,
+If memoryContext is provided in the input, use it as relevant background from previous conversations.`),
   subagents: [
     defineAgentProfile({
       name: 'mystery',
