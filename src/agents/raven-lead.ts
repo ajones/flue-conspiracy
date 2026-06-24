@@ -1,5 +1,5 @@
 import { createAgent, defineAgentProfile } from '@flue/runtime';
-import type { AgentRouteHandler } from '@flue/runtime';
+import { createContextGatheringRoute } from '../agent-route.ts';
 import { weatherManProfile } from './weather-man.ts';
 import { homeAssistantProfile } from './home-assistant.ts';
 import { appleNotesTools } from '../tools/apple-notes.ts';
@@ -7,7 +7,7 @@ import { icalReaderTools } from '../tools/ical-reader.ts';
 import { withWorkspaceContext } from '../workspace/index.ts';
 import { createAgentSandbox, sandboxPathHint } from '../sandbox.ts';
 
-export const route: AgentRouteHandler = async (_c, next) => next();
+export const route = createContextGatheringRoute('raven-lead');
 
 const OPERATIONS = `Delegate to the right subagent based on what the user needs:
 - 'weather-man' for anything weather-related — current conditions, forecasts, highs/lows, weekly outlooks

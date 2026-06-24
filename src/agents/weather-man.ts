@@ -1,11 +1,11 @@
 import { createAgent, defineAgentProfile, defineTool } from '@flue/runtime';
-import type { AgentRouteHandler } from '@flue/runtime';
+import { createContextGatheringRoute } from '../agent-route.ts';
 import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { loadSkills } from '../skills/index.ts';
 import { createAgentSandbox } from '../sandbox.ts';
 
-export const route: AgentRouteHandler = async (_c, next) => next();
+export const route = createContextGatheringRoute('weather-man');
 
 function getWeatherScript(): string {
   const skill = loadSkills().get('google-weather');

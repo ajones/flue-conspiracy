@@ -1,5 +1,5 @@
 import { createAgent, defineAgentProfile, defineTool } from '@flue/runtime';
-import type { AgentRouteHandler } from '@flue/runtime';
+import { createContextGatheringRoute } from '../agent-route.ts';
 import { getHomeAssistantConfig } from '../config.ts';
 import { createLogger } from '../log.ts';
 import { execFile } from 'node:child_process';
@@ -7,7 +7,7 @@ import { createAgentSandbox } from '../sandbox.ts';
 
 const log = createLogger('home-assistant');
 
-export const route: AgentRouteHandler = async (_c, next) => next();
+export const route = createContextGatheringRoute('home-assistant');
 
 function haConfig() {
   return getHomeAssistantConfig();
