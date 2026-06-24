@@ -235,10 +235,11 @@ const c = useColor
       magenta: '\x1b[35m',
       blue: '\x1b[34m',
       white: '\x1b[37m',
+      red: '\x1b[31m',
     }
   : {
       reset: '', dim: '', bold: '', cyan: '', yellow: '',
-      green: '', magenta: '', blue: '', white: '',
+      green: '', magenta: '', blue: '', white: '', red: '',
     };
 
 function tryParseJson(value: string): unknown | undefined {
@@ -305,6 +306,7 @@ interface TraceInfo {
   duration: number;
   spanCount: number;
   tags: Record<string, string>;
+  incomplete: boolean;
 }
 
 async function fetchTraces(limit: number): Promise<TraceInfo[]> {
@@ -343,6 +345,12 @@ async function fetchTraces(limit: number): Promise<TraceInfo[]> {
         for (const p of Object.values(trace.processes ?? {})) serviceNames.add(p.serviceName);
         serviceNames.delete('jaeger');
 
+        const spanIds = new Set(trace.spans.map((s: any) => s.spanID));
+        const incomplete = trace.spans.some((s: any) =>
+          s.warnings?.length > 0 ||
+          s.references?.some((r: any) => r.refType === 'CHILD_OF' && r.spanID !== '0000000000000000' && !spanIds.has(r.spanID)),
+        );
+
         traces.push({
           traceID: trace.traceID,
           operation: root.operationName,
@@ -351,6 +359,7 @@ async function fetchTraces(limit: number): Promise<TraceInfo[]> {
           duration: root.duration,
           spanCount: trace.spans.length,
           tags: tagMap,
+          incomplete,
         });
       }
     }),
@@ -394,18 +403,22 @@ function renderList(traces: TraceInfo[], selected: number): string {
     const spans = `${c.dim}${t.spanCount} spans${c.reset}`;
     const jobName = t.tags['raven.job.name'];
     const extra = jobName && jobName !== t.service ? ` ${c.magenta}[${jobName}]${c.reset}` : '';
+    const status = t.incomplete ? ` ${c.red}INCOMPLETE${c.reset}` : '';
 
-    lines.push(`  ${cursor} ${name} ${op}${extra}  ${dur}  ${spans}  ${time}`);
+    lines.push(`  ${cursor} ${name} ${op}${extra}  ${dur}  ${spans}  ${time}${status}`);
   }
 
-  lines.push(`\n${c.dim}↑/↓ select  enter view  q quit${c.reset}`);
+  lines.push(`\n${c.dim}↑/↓ select  enter view  r refresh  q quit${c.reset}`);
   return lines.join('\n');
 }
 
-async function selectTrace(traces: TraceInfo[]): Promise<string | null> {
+const REFRESH = Symbol('refresh');
+
+async function selectTrace(traces: TraceInfo[]): Promise<string | typeof REFRESH | null> {
   if (!process.stdin.isTTY) {
     for (const t of traces) {
-      console.log(`${t.traceID}  ${t.service}  ${t.operation}  ${formatDuration(t.duration)}  ${formatTime(t.startTime)}`);
+      const mark = t.incomplete ? '  INCOMPLETE' : '';
+      console.log(`${t.traceID}  ${t.service}  ${t.operation}  ${formatDuration(t.duration)}  ${formatTime(t.startTime)}${mark}`);
     }
     return null;
   }
@@ -431,6 +444,9 @@ async function selectTrace(traces: TraceInfo[]): Promise<string | null> {
         selected = Math.min(traces.length - 1, selected + 1);
         clear();
         process.stdout.write(renderList(traces, selected) + '\n');
+      } else if (key === 'r') {
+        cleanup();
+        resolve(REFRESH);
       } else if (key === '\r' || key === '\n') {
         cleanup();
         resolve(traces[selected].traceID);
@@ -457,14 +473,21 @@ async function list(): Promise<void> {
     process.exit(1);
   }
 
-  const traces = await fetchTraces(20);
-  if (traces.length === 0) {
-    console.log('No recent traces found.');
+  let refreshing = false;
+  while (true) {
+    if (refreshing) process.stdout.write(`${c.dim}Loading...${c.reset}\n`);
+    const traces = await fetchTraces(20);
+    if (refreshing) process.stdout.write('\x1b[1A\x1b[J');
+    if (traces.length === 0) {
+      console.log('No recent traces found.');
+      return;
+    }
+
+    const result = await selectTrace(traces);
+    if (result === REFRESH) { refreshing = true; continue; }
+    if (result) return show(result);
     return;
   }
-
-  const traceId = await selectTrace(traces);
-  if (traceId) return show(traceId);
 }
 
 function paginate(output: string): void {

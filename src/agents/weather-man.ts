@@ -3,6 +3,7 @@ import type { AgentRouteHandler } from '@flue/runtime';
 import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { loadSkills } from '../skills/index.ts';
+import { createAgentSandbox } from '../sandbox.ts';
 
 export const route: AgentRouteHandler = async (_c, next) => next();
 
@@ -120,8 +121,13 @@ Present weather clearly and concisely. Lead with the most relevant info for the 
 If the user asks about anything unrelated to weather, politely decline and remind them you're the weather specialist.`,
 });
 
-export default createAgent(() => ({
-  profile: weatherManProfile,
-  model: 'openai-codex/gpt-5.4-mini',
-  tools: weatherTools,
-}));
+export default createAgent(() => {
+  const { sandbox, cwd } = createAgentSandbox('weather-man');
+  return {
+    profile: weatherManProfile,
+    model: 'openai-codex/gpt-5.4-mini',
+    tools: weatherTools,
+    cwd,
+    sandbox,
+  };
+});

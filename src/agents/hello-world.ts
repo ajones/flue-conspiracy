@@ -1,5 +1,6 @@
 import { createAgent, defineAgentProfile } from '@flue/runtime';
 import type { AgentRouteHandler } from '@flue/runtime';
+import { createAgentSandbox } from '../sandbox.ts';
 
 export const route: AgentRouteHandler = async (_c, next) => next();
 
@@ -14,8 +15,13 @@ Always include the original script/alphabet when applicable (e.g. こんにち�
 Your text response will be delivered to the user automatically.`,
 });
 
-export default createAgent(() => ({
-  profile: helloWorld,
-  model: 'openai-codex/gpt-5.4-mini',
-  tools: [],
-}));
+export default createAgent(() => {
+  const { sandbox, cwd } = createAgentSandbox('hello-world');
+  return {
+    profile: helloWorld,
+    model: 'openai-codex/gpt-5.4-mini',
+    tools: [],
+    cwd,
+    sandbox,
+  };
+});

@@ -186,6 +186,7 @@ export async function classifySkills(
         'raven.skills.disabled': disabled.map((s) => s.name).join(','),
         'raven.skills.reasoning': reasoning,
       });
+      span.setAttribute('raven.skills.matched', names.join(','));
       span.setAttribute('raven.skills.matched_count', names.length);
       span.setAttribute('raven.skills.enabled_count', enabled.length);
       span.setAttribute('raven.skills.disabled_count', disabled.length);
@@ -220,7 +221,7 @@ export function formatSkillContext(result: ClassifiedSkills): string {
   const parts: string[] = [];
 
   for (const s of result.enabled) {
-    parts.push(`<skill name="${s.name}">\n${s.body}\n</skill>`);
+    parts.push(`<skill name="${s.name}" path="${s.skillMdPath}">\n${s.body}\n</skill>`);
   }
 
   if (result.disabled.length > 0) {

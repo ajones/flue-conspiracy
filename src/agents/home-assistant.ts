@@ -3,6 +3,7 @@ import type { AgentRouteHandler } from '@flue/runtime';
 import { getHomeAssistantConfig } from '../config.ts';
 import { createLogger } from '../log.ts';
 import { execFile } from 'node:child_process';
+import { createAgentSandbox } from '../sandbox.ts';
 
 const log = createLogger('home-assistant');
 
@@ -268,8 +269,13 @@ If memoryContext is provided in the input, use it as relevant background from pr
 Your text response will be delivered to the user automatically.`,
 });
 
-export default createAgent(() => ({
-  profile: homeAssistantProfile,
-  model: 'openai-codex/gpt-5.4-mini',
-  tools: homeAssistantTools,
-}));
+export default createAgent(() => {
+  const { sandbox, cwd } = createAgentSandbox('home-assistant');
+  return {
+    profile: homeAssistantProfile,
+    model: 'openai-codex/gpt-5.4-mini',
+    tools: homeAssistantTools,
+    cwd,
+    sandbox,
+  };
+});

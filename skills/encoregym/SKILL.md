@@ -30,12 +30,14 @@ email=user@example.com
 password=secretpassword
 ```
 
-Load credentials before running any script:
+Load credentials from `.encoregym.credentials` in your workspace folder (the `workspacePath` from your input) before running any script:
 
 ```bash
-ENCOREGYM_EMAIL=$(grep '^email=' /path/to/workspace/.encoregym.credentials | cut -d= -f2)
-ENCOREGYM_PASSWORD=$(grep '^password=' /path/to/workspace/.encoregym.credentials | cut -d= -f2)
+ENCOREGYM_EMAIL=$(grep '^email=' "$WORKSPACE/.encoregym.credentials" | cut -d= -f2)
+ENCOREGYM_PASSWORD=$(grep '^password=' "$WORKSPACE/.encoregym.credentials" | cut -d= -f2)
 ```
+
+Set `WORKSPACE` to your `workspacePath` value.
 
 All scripts read `ENCOREGYM_EMAIL` and `ENCOREGYM_PASSWORD` from the environment.
 
@@ -47,7 +49,7 @@ with credentials set and it will log in fresh. Sessions are never committed.
 
 ## Scripts
 
-All scripts are in `skills/encoregym/scripts/`. Run with `node`. All output JSON to stdout
+All scripts are in `scripts/`. Run with `node`. All output JSON to stdout
 and exit 0 on success, non-zero on failure.
 
 ---

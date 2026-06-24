@@ -63,12 +63,14 @@ EPICAJUJITSU_EMAIL=user@example.com
 EPICAJUJITSU_PASSWORD=secretpassword
 ```
 
-Load credentials before running any script:
+Load credentials from `.epicajujitsu.credentials` in your workspace folder (the `workspacePath` from your input) before running any script:
 
 ```bash
-EPICAJUJITSU_EMAIL=$(grep '^EPICAJUJITSU_EMAIL=' /path/to/workspace/.epicajujitsu.credentials | cut -d= -f2-)
-EPICAJUJITSU_PASSWORD=$(grep '^EPICAJUJITSU_PASSWORD=' /path/to/workspace/.epicajujitsu.credentials | cut -d= -f2-)
+EPICAJUJITSU_EMAIL=$(grep '^EPICAJUJITSU_EMAIL=' "$WORKSPACE/.epicajujitsu.credentials" | cut -d= -f2-)
+EPICAJUJITSU_PASSWORD=$(grep '^EPICAJUJITSU_PASSWORD=' "$WORKSPACE/.epicajujitsu.credentials" | cut -d= -f2-)
 ```
+
+Set `WORKSPACE` to your `workspacePath` value.
 
 ## Session Caching
 
@@ -81,7 +83,7 @@ re-run `login.js` for that student and retry.
 
 ## Scripts
 
-All scripts are in `skills/epica-jujitsu/scripts/`. Run with `node`. All output JSON to
+All scripts are in `scripts/`. Run with `node`. All output JSON to
 stdout and exit 0 on success, non-zero on failure.
 
 ---

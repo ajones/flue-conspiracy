@@ -91,9 +91,7 @@ export async function loadInfoSources(agentName: string): Promise<string | null>
         content = await readFile(filePath, 'utf8');
       } catch (err: any) {
         if (err.code === 'ENOENT') {
-          log.info('LOCATIONS.md not found — creating default', { dir: workspaceDir });
-          await writeFile(filePath, DEFAULT_LOCATIONS_MD, 'utf8');
-          span.addEvent('info_sources.created_default');
+          log.debug('LOCATIONS.md not found — skipping', { dir: workspaceDir });
         }
         span.setStatus({ code: SpanStatusCode.OK });
         return null;

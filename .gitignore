@@ -11,3 +11,4 @@ data
 .flue-vite
 __pycache__
 .workspace
+.*.credentials
