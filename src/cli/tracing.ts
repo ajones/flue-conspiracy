@@ -113,7 +113,7 @@ service:
   await writeFile(JAEGER_CONFIG_PATH, config);
 }
 
-async function isRunning(): Promise<boolean> {
+export async function isJaegerRunning(): Promise<boolean> {
   if (!existsSync(PID_FILE)) return false;
   const pid = parseInt(await readFile(PID_FILE, 'utf-8'), 10);
   try {
@@ -142,7 +142,7 @@ function clearStaleLock(): void {
 }
 
 export async function startJaeger(): Promise<void> {
-  if (await isRunning()) return;
+  if (await isJaegerRunning()) return;
 
   if (await isPortInUse(4317)) {
     return;
@@ -207,7 +207,7 @@ export async function tracing(args: string[]): Promise<void> {
   const sub = args[0];
 
   if (sub === 'open') {
-    if (!(await isRunning())) {
+    if (!(await isJaegerRunning())) {
       console.error('Jaeger is not running. Start it first with: raven start');
       process.exit(1);
     }

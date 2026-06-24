@@ -3,8 +3,8 @@ import { existsSync, mkdirSync, openSync, writeSync, closeSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { execSync, spawn } from 'node:child_process';
-import { loadConfig } from '../config.ts';
-import { startJaeger, stopJaeger } from './tracing.ts';
+import { loadConfig, getMemoryConfig } from '../config.ts';
+import { startJaeger, stopJaeger, isJaegerRunning } from './tracing.ts';
 
 const LABEL = 'com.raven.gateway';
 const JAEGER_LABEL = 'com.raven.jaeger';
@@ -260,6 +260,32 @@ export async function serviceStatus() {
     console.log(`Gateway HTTP: responding on port ${port} (${res.status})`);
   } catch {
     console.log(`Gateway HTTP: not responding on port ${port}`);
+  }
+
+  // Tracing (Jaeger)
+  if (await isJaegerRunning()) {
+    try {
+      const jaegerRes = await fetch('http://localhost:16686/', { signal: AbortSignal.timeout(2000) });
+      console.log(`Tracing: running (UI ${jaegerRes.ok ? 'ok' : jaegerRes.status})`);
+    } catch {
+      console.log('Tracing: running (UI not responding)');
+    }
+  } else {
+    console.log('Tracing: not running');
+  }
+
+  // Memory (agentmemory)
+  const memConfig = getMemoryConfig();
+  if (memConfig.enabled === false) {
+    console.log('Memory: disabled');
+  } else {
+    const memUrl = memConfig.url ?? 'http://localhost:3111';
+    try {
+      const memRes = await fetch(`${memUrl}/agentmemory/health`, { signal: AbortSignal.timeout(2000) });
+      console.log(`Memory: ${memRes.ok ? 'healthy' : `unhealthy (${memRes.status})`}`);
+    } catch {
+      console.log('Memory: not responding');
+    }
   }
 
   console.log(`Logs: ${LOG_DIR}/`);

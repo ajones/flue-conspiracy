@@ -5,4 +5,4 @@
    - Every section that has data from a successful tool call is present in the draft.
    - No "Note: Couldn't get…" failure line exists for a source whose data actually appears in the message.
    - If the review finds a contradiction (e.g. data is present but a failure note claims otherwise), fix the draft before sending.
-3. Use the reviewed temp file contents as the delivery payload.
+3. Use the reviewed temp file contents as the reply.

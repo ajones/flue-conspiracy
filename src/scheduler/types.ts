@@ -58,6 +58,24 @@ export const ScriptDef = v.object({
 
 export type ScriptDef = v.InferOutput<typeof ScriptDef>;
 
+// --- Context gathering config ---
+
+export const ContextConfig = v.object({
+  vault: v.optional(v.boolean(), false),
+  infoSources: v.optional(v.boolean(), false),
+  pendingRequests: v.optional(v.boolean(), false),
+  memory: v.optional(v.boolean(), false),
+});
+
+export type ContextConfig = v.InferOutput<typeof ContextConfig>;
+
+export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
+  vault: false,
+  infoSources: false,
+  pendingRequests: false,
+  memory: false,
+};
+
 // --- Job creation input ---
 
 export const CreateJobInput = v.pipe(
@@ -76,7 +94,10 @@ export const CreateJobInput = v.pipe(
     maxRetries: v.optional(v.pipe(v.number(), v.minValue(0)), 0),
     retryDelayMs: v.optional(v.pipe(v.number(), v.minValue(1000)), 60_000),
     concurrencyKey: v.optional(v.string()),
+    maxConcurrency: v.optional(v.pipe(v.number(), v.minValue(1)), 1),
+    runTimeoutMs: v.optional(v.pipe(v.number(), v.minValue(5000)), 600_000),
     tags: v.optional(v.array(v.string()), []),
+    context: v.optional(ContextConfig),
   }),
   v.check(
     (input) => !!(input.prompt || input.promptFile),
@@ -102,7 +123,10 @@ export const UpdateJobInput = v.object({
   maxRetries: v.optional(v.pipe(v.number(), v.minValue(0))),
   retryDelayMs: v.optional(v.pipe(v.number(), v.minValue(1000))),
   concurrencyKey: v.optional(v.nullable(v.string())),
+  maxConcurrency: v.optional(v.pipe(v.number(), v.minValue(1))),
+  runTimeoutMs: v.optional(v.pipe(v.number(), v.minValue(5000))),
   tags: v.optional(v.array(v.string())),
+  context: v.optional(v.nullable(ContextConfig)),
 });
 
 export type UpdateJobInput = v.InferOutput<typeof UpdateJobInput>;
@@ -126,6 +150,9 @@ export interface JobRow {
   maxRetries: number;
   retryDelayMs: number;
   concurrencyKey: string | null;
+  maxConcurrency: number;
+  runTimeoutMs: number;
+  contextConfig: ContextConfig;
   tags: string[];
   createdAt: number;
   updatedAt: number;

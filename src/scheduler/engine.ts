@@ -27,9 +27,16 @@ const DEFAULT_CONFIG: SchedulerConfig = {
   catchUpMissed: true,
 };
 
+interface RunningEntry {
+  jobId: string;
+  runId: string;
+  startedAt: number;
+  timeoutMs: number;
+}
+
 export class Scheduler {
   private timer: ReturnType<typeof setTimeout> | null = null;
-  private running = new Map<string, string>();
+  private running = new Map<string, RunningEntry[]>();
   private config: SchedulerConfig;
   private started = false;
 
@@ -46,6 +53,7 @@ export class Scheduler {
     this.recomputeAllNextRuns();
     this.scheduleNextWake();
     this.schedulePrune();
+    this.scheduleTimeoutSweep();
 
     log.info('Started');
   }
@@ -114,11 +122,16 @@ export class Scheduler {
     const now = Date.now();
     const dueJobs = db.getDueJobs(now);
 
-    const available = this.config.maxConcurrent - this.running.size;
+    let totalRunning = 0;
+    for (const entries of this.running.values()) totalRunning += entries.length;
+    const available = this.config.maxConcurrent - totalRunning;
     const batch = dueJobs.slice(0, Math.max(0, available));
 
     for (const job of batch) {
-      if (job.concurrencyKey && this.running.has(job.concurrencyKey)) {
+      const concKey = job.concurrencyKey ?? job.id;
+      const active = this.running.get(concKey) ?? [];
+
+      if (active.length >= job.maxConcurrency) {
         const runId = crypto.randomUUID();
         db.insertRun({
           id: runId,
@@ -127,7 +140,7 @@ export class Scheduler {
           status: 'skipped',
           startedAt: now,
           dispatchId: null,
-          errorMessage: `Skipped: concurrency key "${job.concurrencyKey}" already running`,
+          errorMessage: `Skipped: concurrency limit (${job.maxConcurrency}) reached for "${concKey}"`,
           assembledPrompt: null,
           nextRunAt: null,
           retryAttempt: 0,
@@ -137,7 +150,14 @@ export class Scheduler {
         continue;
       }
 
-      this.fire(job).catch((err) => {
+      // Advance next_run_at before async fire to prevent re-wake from re-dispatching the same job
+      const nextRun = computeNextRun(job.scheduleData);
+      db.getDb().prepare('UPDATE raven_jobs SET next_run_at = ? WHERE id = ?').run(nextRun, job.id);
+
+      const runId = crypto.randomUUID();
+      this.trackRunning(concKey, { jobId: job.id, runId, startedAt: now, timeoutMs: job.runTimeoutMs });
+
+      this.fire(job, 0, runId).catch((err) => {
         log.error('Unhandled error firing job', { job: job.name, error: (err as Error).message ?? String(err) });
       });
     }
@@ -145,7 +165,7 @@ export class Scheduler {
     this.scheduleNextWake();
   }
 
-  private async fire(job: JobRow, retryAttempt = 0): Promise<void> {
+  private async fire(job: JobRow, retryAttempt = 0, preRunId?: string): Promise<void> {
     await tracer.startActiveSpan('job', {
       attributes: {
         'raven.job.name': job.name,
@@ -156,11 +176,12 @@ export class Scheduler {
         ...(retryAttempt > 0 ? { 'raven.job.retry_attempt': retryAttempt } : {}),
       },
     }, async (jobSpan) => {
-      const runId = crypto.randomUUID();
+      const runId = preRunId ?? crypto.randomUUID();
       const now = Date.now();
+      const concKey = job.concurrencyKey ?? job.id;
 
-      if (job.concurrencyKey) {
-        this.running.set(job.concurrencyKey, job.id);
+      if (!preRunId) {
+        this.trackRunning(concKey, { jobId: job.id, runId, startedAt: now, timeoutMs: job.runTimeoutMs });
       }
 
       db.insertRun({
@@ -211,11 +232,16 @@ export class Scheduler {
         const assembled = assemblePrompt(prompt, job.resultPreference, scriptResults);
 
         trackAgentInstance(job.target, job.agent);
+        const cc = job.contextConfig;
         const dispatchCtx = await gatherContext({
           text: assembled,
           agent: job.agent,
           conversationKey: job.target,
           skipSkills: true,
+          skipVault: !cc.vault,
+          skipInfoSources: !cc.infoSources,
+          skipPendingRequests: !cc.pendingRequests,
+          skipMemory: !cc.memory,
         });
         const ctx = otelContext.active();
         const receipt = await dispatch({
@@ -265,9 +291,7 @@ export class Scheduler {
           }, job.retryDelayMs);
         }
       } finally {
-        if (job.concurrencyKey) {
-          this.running.delete(job.concurrencyKey);
-        }
+        this.untrackRunning(concKey, runId);
         jobSpan.end();
       }
     });
@@ -303,11 +327,57 @@ export class Scheduler {
     const job = db.getJob(jobId);
     if (!job) throw new Error(`Job not found: ${jobId}`);
 
+    const concKey = job.concurrencyKey ?? job.id;
+    const active = this.running.get(concKey) ?? [];
+    if (active.length >= job.maxConcurrency) {
+      throw new Error(`Job "${job.name}" at concurrency limit (${job.maxConcurrency})`);
+    }
+
     this.fire(job).catch((err) => {
       log.error('Manual trigger failed', { job: job.name, error: (err as Error).message ?? String(err) });
     });
 
     return job.name;
+  }
+
+  private trackRunning(key: string, entry: RunningEntry): void {
+    const entries = this.running.get(key) ?? [];
+    entries.push(entry);
+    this.running.set(key, entries);
+  }
+
+  private untrackRunning(key: string, runId: string): void {
+    const entries = this.running.get(key);
+    if (!entries) return;
+    const filtered = entries.filter(e => e.runId !== runId);
+    if (filtered.length === 0) {
+      this.running.delete(key);
+    } else {
+      this.running.set(key, filtered);
+    }
+  }
+
+  private scheduleTimeoutSweep(): void {
+    const interval = 600_000;
+    const doSweep = () => {
+      if (!this.started) return;
+      const now = Date.now();
+      for (const [key, entries] of this.running) {
+        const expired = entries.filter(e => now - e.startedAt > e.timeoutMs);
+        for (const entry of expired) {
+          db.finishRun(entry.runId, 'error', `Timed out after ${entry.timeoutMs}ms`);
+          log.warn('Run timed out, releasing concurrency slot', { key, jobId: entry.jobId, runId: entry.runId });
+        }
+        const remaining = entries.filter(e => now - e.startedAt <= e.timeoutMs);
+        if (remaining.length === 0) {
+          this.running.delete(key);
+        } else {
+          this.running.set(key, remaining);
+        }
+      }
+      setTimeout(doSweep, interval);
+    };
+    setTimeout(doSweep, interval);
   }
 
   private schedulePrune(): void {

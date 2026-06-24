@@ -23,14 +23,22 @@ export interface GatherOptions {
   agent: string;
   conversationKey: string;
   skipSkills?: boolean;
+  skipVault?: boolean;
+  skipInfoSources?: boolean;
+  skipPendingRequests?: boolean;
+  skipMemory?: boolean;
 }
 
 export async function gatherContext(options: GatherOptions): Promise<DispatchContext> {
-  const { text, agent, conversationKey, skipSkills } = options;
+  const { text, agent, conversationKey, skipSkills, skipVault, skipInfoSources, skipPendingRequests, skipMemory } = options;
 
   return tracer.startActiveSpan('context.gather', async (span) => {
     span.setAttribute('raven.context.agent', agent);
     span.setAttribute('raven.context.skip_skills', skipSkills ?? false);
+    if (skipVault) span.setAttribute('raven.context.skip_vault', true);
+    if (skipInfoSources) span.setAttribute('raven.context.skip_info_sources', true);
+    if (skipPendingRequests) span.setAttribute('raven.context.skip_pending_requests', true);
+    if (skipMemory) span.setAttribute('raven.context.skip_memory', true);
 
     try {
       const ctx: DispatchContext = {};
@@ -39,7 +47,7 @@ export async function gatherContext(options: GatherOptions): Promise<DispatchCon
         ? classifySkills(text).catch((): ClassifiedSkills => ({ enabled: [], disabled: [], reasoning: '' }))
         : Promise.resolve(null);
 
-      const memoryPromise = (text && isMemoryAvailable())
+      const memoryPromise = (!skipMemory && text && isMemoryAvailable())
         ? (async () => {
             const memConfig = getMemoryConfig();
             const scope = getMemoryScope(agent);
@@ -48,19 +56,21 @@ export async function gatherContext(options: GatherOptions): Promise<DispatchCon
           })().catch(() => null)
         : Promise.resolve(null);
 
-      const vaultEntries = resolveVaultEntries(agent);
+      const vaultEntries = skipVault ? [] : resolveVaultEntries(agent);
       span.setAttribute('raven.vault.entry_count', vaultEntries.length);
-      span.addEvent('vault.entries_resolved', {
-        'raven.vault.agent': agent,
-        'raven.vault.collections': vaultEntries.map((v) => v.collection).join(','),
-      });
+      if (!skipVault) {
+        span.addEvent('vault.entries_resolved', {
+          'raven.vault.agent': agent,
+          'raven.vault.collections': vaultEntries.map((v) => v.collection).join(','),
+        });
+      }
 
       const [skillResult, memoryResult, infoSources, pendingRequests, vaultResult] = await Promise.all([
         skillsPromise,
         memoryPromise,
-        loadInfoSources(agent).catch(() => null),
-        loadPendingRequests(agent).catch(() => null),
-        loadVaultContext(text, vaultEntries).catch((err) => {
+        skipInfoSources ? Promise.resolve(null) : loadInfoSources(agent).catch(() => null),
+        skipPendingRequests ? Promise.resolve(null) : loadPendingRequests(agent).catch(() => null),
+        skipVault ? Promise.resolve(null) : loadVaultContext(text, vaultEntries).catch((err) => {
           log.error('Vault context failed', { error: String(err) });
           return null;
         }),

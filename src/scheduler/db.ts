@@ -1,7 +1,8 @@
 import Database, { type Database as DatabaseInstance } from 'better-sqlite3';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { JobRow, JobRunRow, CreateJobInput, UpdateJobInput, Schedule, ScriptDef } from './types.ts';
+import type { JobRow, JobRunRow, CreateJobInput, UpdateJobInput, Schedule, ScriptDef, ContextConfig } from './types.ts';
+import { DEFAULT_CONTEXT_CONFIG } from './types.ts';
 
 const DATA_DIR = resolve(import.meta.dirname, '..', '..', '.data');
 const DB_PATH = resolve(DATA_DIR, 'scheduler.db');
@@ -24,6 +25,15 @@ function migrate(db: DatabaseInstance) {
   const has = new Set(cols.map(c => c.name));
   if (!has.has('prompt_file')) {
     db.exec("ALTER TABLE raven_jobs ADD COLUMN prompt_file TEXT");
+  }
+  if (!has.has('max_concurrency')) {
+    db.exec("ALTER TABLE raven_jobs ADD COLUMN max_concurrency INTEGER NOT NULL DEFAULT 1");
+  }
+  if (!has.has('run_timeout_ms')) {
+    db.exec("ALTER TABLE raven_jobs ADD COLUMN run_timeout_ms INTEGER NOT NULL DEFAULT 600000");
+  }
+  if (!has.has('context')) {
+    db.exec("ALTER TABLE raven_jobs ADD COLUMN context TEXT");
   }
 }
 
@@ -101,6 +111,9 @@ function rowToJob(row: any): JobRow {
     maxRetries: row.max_retries,
     retryDelayMs: row.retry_delay_ms,
     concurrencyKey: row.concurrency_key,
+    maxConcurrency: row.max_concurrency ?? 1,
+    runTimeoutMs: row.run_timeout_ms ?? 600_000,
+    contextConfig: row.context ? JSON.parse(row.context) as ContextConfig : { ...DEFAULT_CONTEXT_CONFIG },
     tags: JSON.parse(row.tags) as string[],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -178,14 +191,17 @@ export function createJob(input: CreateJobInput, nextRunAt: number | null): JobR
     INSERT INTO raven_jobs (
       id, name, description, enabled, agent, prompt, prompt_file, result_preference, target,
       scripts, schedule_kind, schedule_data, delete_after_run, max_retries,
-      retry_delay_ms, concurrency_key, tags, created_at, updated_at, next_run_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      retry_delay_ms, concurrency_key, max_concurrency, run_timeout_ms,
+      context, tags, created_at, updated_at, next_run_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id, input.name, input.description, input.enabled ? 1 : 0,
     input.agent, input.prompt, input.promptFile ?? null, input.resultPreference, input.target,
     JSON.stringify(input.scripts), input.schedule.kind, JSON.stringify(input.schedule),
     input.deleteAfterRun ? 1 : 0, input.maxRetries,
-    input.retryDelayMs, input.concurrencyKey ?? null, JSON.stringify(input.tags),
+    input.retryDelayMs, input.concurrencyKey ?? null, input.maxConcurrency, input.runTimeoutMs,
+    input.context ? JSON.stringify(input.context) : null,
+    JSON.stringify(input.tags),
     now, now, nextRunAt,
   );
 
@@ -212,7 +228,10 @@ export function updateJob(id: string, patch: UpdateJobInput, nextRunAt?: number 
   if (patch.maxRetries !== undefined) { sets.push('max_retries = ?'); params.push(patch.maxRetries); }
   if (patch.retryDelayMs !== undefined) { sets.push('retry_delay_ms = ?'); params.push(patch.retryDelayMs); }
   if (patch.concurrencyKey !== undefined) { sets.push('concurrency_key = ?'); params.push(patch.concurrencyKey); }
+  if (patch.maxConcurrency !== undefined) { sets.push('max_concurrency = ?'); params.push(patch.maxConcurrency); }
+  if (patch.runTimeoutMs !== undefined) { sets.push('run_timeout_ms = ?'); params.push(patch.runTimeoutMs); }
   if (patch.tags !== undefined) { sets.push('tags = ?'); params.push(JSON.stringify(patch.tags)); }
+  if (patch.context !== undefined) { sets.push('context = ?'); params.push(patch.context ? JSON.stringify(patch.context) : null); }
   if (patch.schedule !== undefined) {
     sets.push('schedule_kind = ?', 'schedule_data = ?');
     params.push(patch.schedule.kind, JSON.stringify(patch.schedule));

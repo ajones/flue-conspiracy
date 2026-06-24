@@ -32,7 +32,7 @@
   },
 
   memory: {
-    enabled: true,
+    enabled: false,
     defaultScope: "conversation",
     agents: {
       // "raven-lead": { scope: "agent" },
