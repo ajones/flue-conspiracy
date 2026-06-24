@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import type { ScriptDef, ScriptResult } from './types.ts';
 
 const MAX_ERROR_LINES = 25;
@@ -17,25 +18,36 @@ async function runOne(script: ScriptDef): Promise<ScriptResult> {
   };
 
   try {
-    const proc = Bun.spawn(['sh', '-c', script.command], {
-      env: process.env,
-      stdout: 'pipe',
-      stderr: 'pipe',
+    const { exitCode, stdout, stderr } = await new Promise<{ exitCode: number; stdout: string; stderr: string }>((resolve, reject) => {
+      const proc = spawn('sh', ['-c', script.command], {
+        env: process.env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+
+      let out = '';
+      let err = '';
+      proc.stdout.on('data', (chunk: Buffer) => { out += chunk.toString(); });
+      proc.stderr.on('data', (chunk: Buffer) => { err += chunk.toString(); });
+
+      const timer = setTimeout(() => {
+        proc.kill();
+        resolve({ exitCode: -1, stdout: '', stderr: `Script timed out after ${script.timeout}ms` });
+      }, script.timeout);
+
+      proc.on('close', (code) => {
+        clearTimeout(timer);
+        resolve({ exitCode: code ?? 1, stdout: out, stderr: err });
+      });
+
+      proc.on('error', (e) => {
+        clearTimeout(timer);
+        reject(e);
+      });
     });
 
-    const result = await Promise.race([
-      proc.exited,
-      new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), script.timeout)),
-    ]);
-
-    if (result === 'timeout') {
-      proc.kill();
-      return { ...base, ok: false, output: `Script timed out after ${script.timeout}ms` };
+    if (exitCode === -1) {
+      return { ...base, ok: false, output: stderr };
     }
-
-    const stdout = await new Response(proc.stdout).text();
-    const stderr = await new Response(proc.stderr).text();
-    const exitCode = result as number;
 
     if (exitCode !== 0) {
       const errOutput = (stderr || stdout).trim();

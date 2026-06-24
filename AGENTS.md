@@ -28,6 +28,10 @@ Add tools, subagents, and skills that define what this agent can actually do. Al
 
 Add iMessage as a Flue channel using the local `imsg` CLI. The adapter lives in `src/channels/imessage.ts`.
 
+## Workspace
+
+Each agent has a workspace directory. Check the config file to build the path to an agent's workspace.
+
 ## Architecture
 
 The agent is defined in `src/agent.ts` using `@flue/runtime`. Tools live in `src/tools/` as typed actions. Auth logic is isolated in `src/auth/`. The iMessage channel adapter is in `src/channels/imessage.ts`.
@@ -79,17 +83,24 @@ Tools in `src/tools/` are typed Flue tool definitions. Each tool that calls the 
 
 ## Scheduled Jobs
 
-Jobs are managed through the raven gateway's HTTP API at `http://localhost:7284/api/jobs`. The CLI (`raven jobs`) handles listing, showing, enabling, disabling, deleting, and triggering — but creation is done via the API directly.
+Jobs are managed through the raven gateway's HTTP API at `http://localhost:7284/api/jobs` and the CLI (`raven jobs`).
 
 ### Creating a Job
 
-`POST /api/jobs` with a JSON body:
+Use `raven jobs create <file.json>` with a JSON file containing the job definition. The CLI tries the gateway API first and falls back to direct DB access if the gateway isn't running.
+
+```sh
+raven jobs create job.json
+```
+
+Job JSON structure:
 
 ```json
 {
   "name": "my-job",
   "agent": "raven-lead",
   "prompt": "What the agent should do when the job fires.",
+  "promptFile": "prompts/jobs/my-job.md",
   "resultPreference": "How the agent should deliver the result.",
   "target": "telegram:v1:regular:chat:<chatId>:thread::direct:",
   "schedule": { ... },
@@ -100,7 +111,11 @@ Jobs are managed through the raven gateway's HTTP API at `http://localhost:7284/
 }
 ```
 
-Required fields: `name` (kebab-case), `agent`, `prompt`, `resultPreference`, `target`, `schedule`.
+Required fields: `name` (kebab-case), `agent`, `prompt` or `promptFile`, `resultPreference`, `target`, `schedule`.
+
+- Use `promptFile` instead of `prompt` to point to a markdown file in `prompts/jobs/`. The file is rendered at runtime via `markupdown`, which resolves `![[...]]` includes.
+- `resultPreference` tells the agent how to deliver its output. It is appended to the assembled prompt at dispatch time. Read the prompt (or prompt file) to understand what the job produces, then write a `resultPreference` that matches — e.g. "Send the formatted message to the conversation." or "Reply with a short summary, no preamble."
+- You can also create jobs via the API directly with `POST /api/jobs` using the same JSON body.
 
 ### Schedule Types
 

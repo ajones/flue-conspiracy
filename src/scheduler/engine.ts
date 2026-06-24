@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process';
 import { trace, context as otelContext, SpanStatusCode } from '@opentelemetry/api';
 import { dispatch } from '@flue/runtime';
 import { computeNextRun } from './cron.ts';
@@ -185,19 +186,15 @@ export class Scheduler {
               },
             }, async (span) => {
               try {
-                const proc = Bun.spawn(['markupdown', job.promptFile!], {
-                  stdout: 'pipe',
-                  stderr: 'pipe',
+                const rendered = await new Promise<string>((resolve, reject) => {
+                  execFile('markupdown', [job.promptFile!], (error, stdout, stderr) => {
+                    if (error) {
+                      reject(new Error(`markupdown failed (exit ${error.code}): ${stderr.trim()}`));
+                      return;
+                    }
+                    resolve(stdout.trim());
+                  });
                 });
-                const [exitCode, stdout, stderr] = await Promise.all([
-                  proc.exited,
-                  new Response(proc.stdout).text(),
-                  new Response(proc.stderr).text(),
-                ]);
-                if (exitCode !== 0) {
-                  throw new Error(`markupdown failed (exit ${exitCode}): ${stderr.trim()}`);
-                }
-                const rendered = stdout.trim();
                 span.setAttribute('raven.job.prompt_file.length', rendered.length);
                 span.setStatus({ code: SpanStatusCode.OK });
                 return rendered;

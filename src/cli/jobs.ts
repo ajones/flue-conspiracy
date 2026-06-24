@@ -1,10 +1,12 @@
 import { parseArgs } from 'node:util';
+import { readFileSync } from 'node:fs';
 import { getGatewayUrl } from '../config.ts';
 
 const USAGE = `raven jobs — manage scheduled jobs
 
 Commands:
   raven jobs list              List all jobs
+  raven jobs create <file>     Create a job from a JSON file (or - for stdin)
   raven jobs show <name>       Show job details + recent runs
   raven jobs enable <name>     Enable a job
   raven jobs disable <name>    Disable a job
@@ -138,6 +140,7 @@ async function show(name: string, asJson: boolean) {
   console.log(`  Next run:    ${formatDate(job.nextRunAt)}`);
   console.log(`  Last run:    ${formatDate(job.lastRunAt)} (${job.lastStatus ?? '—'})`);
   console.log(`  Errors:      ${job.consecutiveErrors}`);
+  if (job.promptFile) console.log(`  Prompt file: ${job.promptFile}`);
   if (job.description) console.log(`  Description: ${job.description}`);
   if (job.tags.length) console.log(`  Tags:        ${job.tags.join(', ')}`);
   if (job.scripts.length) {
@@ -182,6 +185,67 @@ async function trigger(name: string, asJson: boolean) {
   const result = await api(`/jobs/${name}/trigger`, { method: 'POST' });
   if (asJson) return json(result);
   console.log(`Triggered ${result.name}.`);
+}
+
+async function create(args: string[], asJson: boolean) {
+  const file = args[0];
+  if (!file) { console.error('Usage: raven jobs create <file.json>  (or - for stdin)'); process.exit(1); }
+
+  let raw: string;
+  if (file === '-') {
+    raw = await Bun.stdin.text();
+  } else {
+    raw = readFileSync(file, 'utf-8');
+  }
+
+  const body = JSON.parse(raw);
+
+  // Try gateway first, fall back to direct DB access
+  const base = getGatewayUrl();
+  try {
+    const res = await fetch(`${base}/api/jobs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const result = await res.json();
+    if (!res.ok) {
+      console.error(`Error ${res.status}:`, result.error ?? result);
+      process.exit(1);
+    }
+    if (asJson) return json(result);
+    console.log(`Created job "${result.name}". Next run: ${formatDate(result.nextRunAt)}`);
+    return;
+  } catch {
+    // Gateway not running — write directly to DB
+  }
+
+  const { safeParse, flatten } = await import('valibot');
+  const { CreateJobInput } = await import('../scheduler/types.ts');
+  const { computeNextRun } = await import('../scheduler/cron.ts');
+  const db = await import('../scheduler/db.ts');
+
+  const parsed = safeParse(CreateJobInput, body);
+  if (!parsed.success) {
+    console.error('Validation failed:', flatten(parsed.issues));
+    process.exit(1);
+  }
+
+  const input = parsed.output;
+  if (db.getJobByName(input.name)) {
+    console.error(`Job "${input.name}" already exists.`);
+    process.exit(1);
+  }
+
+  let schedule = input.schedule;
+  if (schedule.kind === 'relative') {
+    schedule = { kind: 'at', at: new Date(Date.now() + schedule.delayMs).toISOString() };
+  }
+  const nextRunAt = input.enabled ? computeNextRun(schedule) : null;
+  const job = db.createJob({ ...input, schedule }, nextRunAt);
+
+  if (asJson) return json(job);
+  console.log(`Created job "${job.name}". Next run: ${formatDate(job.nextRunAt)}`);
 }
 
 async function history(args: string[], asJson: boolean) {
@@ -245,6 +309,7 @@ export async function jobs(args: string[]) {
   }
 
   if (sub === 'list' || sub === 'ls') return list(rest, asJson);
+  if (sub === 'create') return create(rest, asJson);
   if (sub === 'show') {
     if (!rest[0]) { console.error('Usage: raven jobs show <name>'); process.exit(1); }
     return show(rest[0], asJson);
