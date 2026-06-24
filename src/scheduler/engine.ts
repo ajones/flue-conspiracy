@@ -1,14 +1,14 @@
 import { execFile } from 'node:child_process';
 import { trace, context as otelContext, SpanStatusCode } from '@opentelemetry/api';
-import { dispatch } from '@flue/runtime';
 import { computeNextRun } from './cron.ts';
 import * as db from './db.ts';
 import { runScripts, assemblePrompt } from './scripts.ts';
 import type { JobRow } from './types.ts';
 import { createLogger } from '../log.ts';
-import { trackDispatchContext, untrackDispatchContext } from '../instrumentation.js';
-import { trackAgentInstance } from '../agent-names.ts';
+import { trackAgentInstance, getAgentName } from '../agent-names.ts';
 import { gatherContext, spreadContext } from '../context.ts';
+import { dispatchAndCollect } from '../dispatch-collect.ts';
+import { sendToConversation } from '../deliver.ts';
 
 const log = createLogger('scheduler');
 const tracer = trace.getTracer('raven');
@@ -127,6 +127,25 @@ export class Scheduler {
     const available = this.config.maxConcurrent - totalRunning;
     const batch = dueJobs.slice(0, Math.max(0, available));
 
+    if (dueJobs.length > batch.length) {
+      const deferred = dueJobs.slice(batch.length);
+      const deferredNames = deferred.map(j => j.name);
+      log.warn('Global concurrency limit reached, deferring jobs', {
+        limit: this.config.maxConcurrent,
+        running: totalRunning,
+        due: dueJobs.length,
+        deferred: deferredNames,
+      });
+      tracer.startActiveSpan('scheduler.global_concurrency_exceeded', (span) => {
+        span.setAttribute('raven.scheduler.limit', this.config.maxConcurrent);
+        span.setAttribute('raven.scheduler.running', totalRunning);
+        span.setAttribute('raven.scheduler.due', dueJobs.length);
+        span.setAttribute('raven.scheduler.deferred', deferredNames);
+        span.setStatus({ code: SpanStatusCode.UNSET, message: `${deferred.length} job(s) deferred: global concurrency limit (${this.config.maxConcurrent}) reached` });
+        span.end();
+      });
+    }
+
     for (const job of batch) {
       const concKey = job.concurrencyKey ?? job.id;
       const active = this.running.get(concKey) ?? [];
@@ -229,41 +248,95 @@ export class Scheduler {
           : job.prompt;
 
         const scriptResults = await runScripts(job.scripts);
-        const assembled = assemblePrompt(prompt, job.resultPreference, scriptResults);
+        const assembled = assemblePrompt(prompt, null, scriptResults);
 
-        trackAgentInstance(job.target, job.agent);
+        const jobInstanceId = `scheduler:job:${job.name}:${runId}`;
+        trackAgentInstance(jobInstanceId, job.agent);
         const cc = job.contextConfig;
         const dispatchCtx = await gatherContext({
           text: assembled,
           agent: job.agent,
-          conversationKey: job.target,
+          conversationKey: jobInstanceId,
           skipSkills: true,
           skipVault: !cc.vault,
           skipInfoSources: !cc.infoSources,
           skipPendingRequests: !cc.pendingRequests,
           skipMemory: !cc.memory,
         });
-        const ctx = otelContext.active();
-        const receipt = await dispatch({
-          agent: job.agent,
-          id: job.target,
-          input: {
-            type: 'scheduler.job',
-            jobName: job.name,
-            message: assembled,
-            ...spreadContext(dispatchCtx),
-          },
+
+        const jobResult = await tracer.startActiveSpan('job.dispatch', async (dispatchSpan) => {
+          try {
+            const reply = await dispatchAndCollect({
+              agent: job.agent,
+              id: jobInstanceId,
+              input: {
+                type: 'scheduler.job',
+                jobName: job.name,
+                message: assembled,
+                ...spreadContext(dispatchCtx),
+              },
+            }, { parentContext: otelContext.active(), timeoutMs: job.runTimeoutMs });
+            dispatchSpan.setStatus({ code: SpanStatusCode.OK });
+            if (reply.dispatchId) {
+              dispatchSpan.setAttribute('raven.dispatch_id', reply.dispatchId);
+            }
+            return reply;
+          } catch (err) {
+            dispatchSpan.setStatus({ code: SpanStatusCode.ERROR, message: (err as Error).message });
+            throw err;
+          } finally {
+            dispatchSpan.end();
+          }
         });
-        const dispatchId = (receipt as any)?.dispatchId as string | undefined;
-        if (dispatchId) trackDispatchContext(dispatchId, ctx);
 
         db.getDb().prepare(
           'UPDATE raven_job_runs SET assembled_prompt = ?, dispatch_id = ? WHERE id = ?'
-        ).run(assembled, (receipt as any)?.dispatchId ?? null, runId);
+        ).run(assembled, jobResult.dispatchId ?? null, runId);
+
+        if (jobResult.text) {
+          await tracer.startActiveSpan('job.deliver', {
+            attributes: {
+              'raven.job.target': job.target,
+              'raven.job.result_length': jobResult.text.length,
+            },
+          }, async (deliverSpan) => {
+            try {
+              const targetAgent = getAgentName(job.target);
+              if (!targetAgent) {
+                throw new Error(`No agent bound to target conversation: ${job.target}`);
+              }
+              deliverSpan.setAttribute('raven.job.target_agent', targetAgent);
+
+              const deliveryMessage = `${job.resultPreference}\n\n${jobResult.text}`;
+              const deliveryReply = await dispatchAndCollect({
+                agent: targetAgent,
+                id: job.target,
+                input: {
+                  type: 'scheduler.delivery',
+                  jobName: job.name,
+                  message: deliveryMessage,
+                },
+              }, { parentContext: otelContext.active() });
+
+              if (deliveryReply.text) {
+                await sendToConversation(job.target, deliveryReply.text);
+                deliverSpan.addEvent('delivered', {
+                  'raven.job.delivery_length': deliveryReply.text.length,
+                });
+              }
+              deliverSpan.setStatus({ code: SpanStatusCode.OK });
+            } catch (err) {
+              deliverSpan.setStatus({ code: SpanStatusCode.ERROR, message: (err as Error).message });
+              throw err;
+            } finally {
+              deliverSpan.end();
+            }
+          });
+        }
 
         db.finishRun(runId, 'ok');
         this.advanceJob(job, 'ok');
-        log.info('Job dispatched OK', { job: job.name });
+        log.info('Job completed', { job: job.name });
         jobSpan.setStatus({ code: SpanStatusCode.OK });
       } catch (err: any) {
         const msg = err.message ?? String(err);

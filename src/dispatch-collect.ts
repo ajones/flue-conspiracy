@@ -3,27 +3,38 @@ import type { NamedAgentDispatchRequest } from '@flue/runtime';
 import type { Context } from '@opentelemetry/api';
 import { trackDispatchContext } from './instrumentation.ts';
 
-const TIMEOUT_MS = 60_000;
+const DEFAULT_TIMEOUT_MS = 60_000;
 
 export interface CollectedReply {
   dispatchId: string | undefined;
   text: string;
 }
 
+export interface DispatchAndCollectOptions {
+  parentContext?: Context;
+  timeoutMs?: number;
+}
+
 export function dispatchAndCollect(
   request: NamedAgentDispatchRequest,
-  parentContext?: Context,
+  parentContextOrOptions?: Context | DispatchAndCollectOptions,
 ): Promise<CollectedReply> {
+  const isContext = parentContextOrOptions && typeof (parentContextOrOptions as any).getValue === 'function';
+  const opts: DispatchAndCollectOptions = isContext
+    ? { parentContext: parentContextOrOptions as Context }
+    : (parentContextOrOptions as DispatchAndCollectOptions) ?? {};
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+
   return new Promise((resolve, reject) => {
     let unsub: (() => void) | undefined;
     const timeout = setTimeout(() => {
       unsub?.();
       reject(new Error('dispatchAndCollect timeout'));
-    }, TIMEOUT_MS);
+    }, timeoutMs);
 
     dispatch(request).then((receipt) => {
-      if (parentContext && receipt.dispatchId) {
-        trackDispatchContext(receipt.dispatchId, parentContext);
+      if (opts.parentContext && receipt.dispatchId) {
+        trackDispatchContext(receipt.dispatchId, opts.parentContext);
       }
       unsub = observe((event) => {
         if (event.dispatchId !== receipt.dispatchId || event.type !== 'agent_end') return;

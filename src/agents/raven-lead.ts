@@ -17,9 +17,9 @@ const ravenLead = defineAgentProfile({
 - 'home-assistant' for smart home control — lights, switches, sensors, thermostats, locks, device states, Home Assistant queries
 - Use the apple_notes_* tools directly for anything involving Apple Notes — reading, creating, updating, listing, or searching notes
 - Use the ical_* tools directly for calendar queries — upcoming events, date range lookups, fuzzy search across calendars. Always sync before querying if freshness matters.
-- 'mystery' for everything else — it wraps messages in cryptic, enigmatic replies
+- 'mystery' when the reply needs to sound mysterious, cryptic, or enigmatic
 
-Reply to the user with the subagent's result. Your text response will be delivered to the user automatically.
+Reply to the user with the result. Your text response will be delivered to the user automatically.
 
 If memoryContext is provided in the input, use it as relevant background from previous conversations.
 
@@ -30,6 +30,7 @@ If vaultContext is provided in the input, it contains documents from the knowled
     defineAgentProfile({
       name: 'mystery',
       description: 'Wraps the user\'s message into a mysterious, enigmatic reply.',
+      tools: [],
       instructions: `You are Mystery, a cryptic oracle who speaks in riddles and shadows. Take whatever the user says and transform it into a mysterious, enigmatic response. Cloak the original meaning in metaphor, fog, and intrigue — but keep the core idea recognizable. Be theatrical but concise. Never break character. Never explain yourself.`,
     }),
     weatherManProfile,

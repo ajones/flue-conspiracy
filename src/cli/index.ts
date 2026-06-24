@@ -31,7 +31,10 @@ Usage:
   raven logs               Show recent runs
   raven logs -f            Tail runs in real time
   raven logs <runId>       Stream events for a specific run
-  raven tracing open       Open the trace viewer in the browser
+  raven tracing                   List recent traces (interactive)
+  raven tracing list              List recent traces (interactive)
+  raven tracing open              Open the trace viewer in the browser
+  raven tracing show <id|url>     Show trace prompts and results
 
 Options:
   --help, -h                Show this help message

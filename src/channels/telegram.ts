@@ -3,9 +3,10 @@ import { createTelegramChannel, type TelegramChannel, type TelegramConversationR
 import { Api } from 'grammy';
 import type { Message, Update } from 'grammy/types';
 import { getTelegramBots, type TelegramBotConfig } from '../config.ts';
-import { trackAgentInstance } from '../agent-names.ts';
+import { trackAgentInstance, registerAgentResolver } from '../agent-names.ts';
 import { gatherContext, spreadContext } from '../context.ts';
 import { dispatchAndCollect } from '../dispatch-collect.ts';
+import { isClearCommand, clearAgentSession } from '../session-reset.ts';
 import { createLogger } from '../log.ts';
 
 export interface TelegramBot {
@@ -44,6 +45,23 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
 
           const convKey = channel.conversationKey(conversation);
           trackAgentInstance(convKey, bot.agent);
+
+          if (isClearCommand(text)) {
+            await clearAgentSession(convKey);
+            tgLog.info('Session cleared', { convKey });
+            span.addEvent('session.cleared');
+            await client.sendMessage(incoming.chat.id, 'Conversation cleared.', {
+              ...(conversation.type === 'business-chat'
+                ? { business_connection_id: conversation.businessConnectionId }
+                : {}),
+              ...(conversation.messageThreadId === undefined ? {} : { message_thread_id: conversation.messageThreadId }),
+              ...(conversation.directMessagesTopicId === undefined
+                ? {}
+                : { direct_messages_topic_id: conversation.directMessagesTopicId }),
+            });
+            span.setStatus({ code: SpanStatusCode.OK });
+            return;
+          }
 
           const ctx = await gatherContext({ text, agent: bot.agent, conversationKey: convKey });
 
@@ -176,6 +194,11 @@ function conversationFromMessage(message: Message): TelegramConversationRef {
 const botConfigs = getTelegramBots().filter((b) => b.botToken);
 export const bots = botConfigs.map(createBot);
 
+if (bots.length === 1) {
+  const singleAgent = bots[0].config.agent;
+  registerAgentResolver((id) => id.startsWith('telegram:') ? singleAgent : undefined);
+}
+
 const defaultChannel: TelegramChannel = bots[0]?.channel ?? createTelegramChannel({
   secretToken: 'unconfigured',
   async webhook() {
@@ -184,6 +207,21 @@ const defaultChannel: TelegramChannel = bots[0]?.channel ?? createTelegramChanne
 });
 
 export const channel: TelegramChannel = defaultChannel;
+
+export async function sendTelegramText(id: string, text: string): Promise<void> {
+  if (bots.length === 0) throw new Error('No telegram bots configured');
+  const ref = bots[0].channel.parseConversationKey(id);
+  const opts = ref.type === 'business-chat'
+    ? { business_connection_id: ref.businessConnectionId }
+    : {};
+  await bots[0].client.sendMessage(ref.chatId, text, {
+    ...opts,
+    ...(ref.messageThreadId !== undefined ? { message_thread_id: ref.messageThreadId } : {}),
+    ...('directMessagesTopicId' in ref && ref.directMessagesTopicId !== undefined
+      ? { direct_messages_topic_id: ref.directMessagesTopicId }
+      : {}),
+  });
+}
 
 export function startPolling() {
   const pollingBots = bots.filter((b) => (b.config.mode ?? 'poll') === 'poll');

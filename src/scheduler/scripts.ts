@@ -74,7 +74,7 @@ export function formatScriptBlock(result: ScriptResult): string {
 
 export function assemblePrompt(
   prompt: string,
-  resultPreference: string,
+  resultPreference: string | null,
   results: ScriptResult[],
 ): string {
   const before = results
@@ -91,7 +91,9 @@ export function assemblePrompt(
   if (before) parts.push(before);
   parts.push(prompt);
   if (after) parts.push(after);
-  parts.push(`<result-preference>\n${resultPreference}\n</result-preference>`);
+  if (resultPreference) {
+    parts.push(`<result-preference>\n${resultPreference}\n</result-preference>`);
+  }
 
   return parts.join('\n\n');
 }
