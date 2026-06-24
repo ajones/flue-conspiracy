@@ -7,6 +7,7 @@ import type { JobRow } from './types.ts';
 import { createLogger } from '../log.ts';
 import { trackDispatchContext, untrackDispatchContext } from '../instrumentation.js';
 import { trackAgentInstance } from '../agent-names.ts';
+import { gatherContext, spreadContext } from '../context.ts';
 
 const log = createLogger('scheduler');
 const tracer = trace.getTracer('raven');
@@ -213,6 +214,12 @@ export class Scheduler {
         const assembled = assemblePrompt(prompt, job.resultPreference, scriptResults);
 
         trackAgentInstance(job.target, job.agent);
+        const dispatchCtx = await gatherContext({
+          text: assembled,
+          agent: job.agent,
+          conversationKey: job.target,
+          skipSkills: true,
+        });
         const ctx = otelContext.active();
         const receipt = await dispatch({
           agent: job.agent,
@@ -221,6 +228,7 @@ export class Scheduler {
             type: 'scheduler.job',
             jobName: job.name,
             message: assembled,
+            ...spreadContext(dispatchCtx),
           },
         });
         const dispatchId = (receipt as any)?.dispatchId as string | undefined;

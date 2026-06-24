@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
 import { getWorkspaceConfig } from './config.ts';
-import { resolveWorkspace } from './workspace/index.ts';
+import { resolveAgentWorkspace } from './workspace/index.ts';
 import { parseFrontMatter } from './info-sources.ts';
 import { createLogger } from './log.ts';
 
@@ -27,7 +27,7 @@ function buildBlock(content: string): string {
   return `<${BLOCK_NAME}>\n${instructions}\n</${BLOCK_NAME}>`;
 }
 
-export async function loadPendingRequests(): Promise<string | null> {
+export async function loadPendingRequests(agentName: string): Promise<string | null> {
   return tracer.startActiveSpan('pending_requests.load', async (span) => {
     try {
       const wsConfig = getWorkspaceConfig();
@@ -38,7 +38,7 @@ export async function loadPendingRequests(): Promise<string | null> {
         return null;
       }
 
-      const workspaceDir = resolveWorkspace(wsConfig);
+      const workspaceDir = resolveAgentWorkspace(wsConfig, agentName);
       const filePath = join(workspaceDir, PENDING_REQUESTS_FILE);
       span.setAttribute('raven.pending_requests.file', filePath);
 

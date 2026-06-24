@@ -17,11 +17,6 @@
   imessage: {
     db: "/Users/raven/Library/Messages/chat.db",
     conversations: [
-      {
-        name: "aaron-direct",
-        identifier: "+15127407713",
-        agent: "raven-lead",
-      },
     ],
   },
 
@@ -46,7 +41,19 @@
 
   workspace: {
     enabled: true,
-    dir: ".workspace",
+    dir: "workspace",
+  },
+
+  vault: {
+    enabled: true,
+    matchThreshold: 0.09,
+    vaults: [
+      { collection: "vault" },
+      { collection: "vault-sherri" },
+    ],
+    agents: {
+      "raven-lead": { vaults: ["vault"] },
+    },
   },
 
   scheduler: {

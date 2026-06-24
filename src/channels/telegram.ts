@@ -2,13 +2,9 @@ import { SpanStatusCode, context as otelContext, trace } from '@opentelemetry/ap
 import { createTelegramChannel, type TelegramChannel, type TelegramConversationRef } from '@flue/telegram';
 import { Api } from 'grammy';
 import type { Message, Update } from 'grammy/types';
-import { getTelegramBots, getMemoryConfig, getMemoryScope, type TelegramBotConfig } from '../config.ts';
-import { classifySkills, formatSkillContext, type ClassifiedSkills } from '../skills/index.ts';
+import { getTelegramBots, type TelegramBotConfig } from '../config.ts';
 import { trackAgentInstance } from '../agent-names.ts';
-
-import { isMemoryAvailable, recallMemory } from '../memory/index.ts';
-import { loadInfoSources } from '../info-sources.ts';
-import { loadPendingRequests } from '../pending-requests.ts';
+import { gatherContext, spreadContext } from '../context.ts';
 import { dispatchAndCollect } from '../dispatch-collect.ts';
 import { createLogger } from '../log.ts';
 
@@ -46,52 +42,10 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
             span.setAttribute('raven.telegram.message', text.slice(0, 4000));
           }
 
-          const result = text
-            ? await classifySkills(text).catch(() => ({ enabled: [], disabled: [], reasoning: '' } as ClassifiedSkills))
-            : ({ enabled: [], disabled: [], reasoning: '' } as ClassifiedSkills);
-          const skillContext = formatSkillContext(result);
-
-          if (result.enabled.length > 0) {
-            tgLog.debug('Skills matched', { skills: result.enabled.map((s) => s.name), reasoning: result.reasoning });
-          }
-
-          span.addEvent('classification.complete', {
-            'raven.skills.enabled': result.enabled.map((s) => s.name).join(','),
-            'raven.skills.disabled': result.disabled.map((s) => s.name).join(','),
-            'raven.skills.reasoning': result.reasoning,
-          });
-
           const convKey = channel.conversationKey(conversation);
           trackAgentInstance(convKey, bot.agent);
 
-          let memoryContext: string | undefined;
-          if (text && isMemoryAvailable()) {
-            const memConfig = getMemoryConfig();
-            const scope = getMemoryScope(bot.agent);
-            const scopeKey = scope === 'agent' ? bot.agent : `${bot.agent}:${convKey}`;
-            const recalled = await recallMemory(memConfig, scopeKey, text);
-            if (recalled) {
-              memoryContext = recalled;
-              tgLog.debug('Memory recalled', { count: recalled.split('\n').length, query: text.slice(0, 50) });
-              span.addEvent('memory.recalled', {
-                'raven.memory.scope': scope,
-                'raven.memory.length': recalled.length,
-              });
-            }
-          }
-
-          const [infoSources, pendingRequests] = await Promise.all([
-            loadInfoSources().catch(() => null),
-            loadPendingRequests().catch(() => null),
-          ]);
-          if (infoSources) {
-            tgLog.debug('Info sources loaded', { length: infoSources.length });
-            span.addEvent('info_sources.loaded', { 'raven.info_sources.length': infoSources.length });
-          }
-          if (pendingRequests) {
-            tgLog.debug('Pending requests loaded', { length: pendingRequests.length });
-            span.addEvent('pending_requests.loaded', { 'raven.pending_requests.length': pendingRequests.length });
-          }
+          const ctx = await gatherContext({ text, agent: bot.agent, conversationKey: convKey });
 
           tgLog.debug('Dispatching to agent', { agent: bot.agent, convKey });
           span.addEvent('dispatching', {
@@ -113,10 +67,7 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
                 ...(incoming.from.username ? { username: incoming.from.username } : {}),
               } : undefined,
               chatId: incoming.chat.id,
-              ...(skillContext ? { skillContext } : {}),
-              ...(memoryContext ? { memoryContext } : {}),
-              ...(infoSources ? { infoSources } : {}),
-              ...(pendingRequests ? { pendingRequests } : {}),
+              ...spreadContext(ctx),
             },
           }, otelContext.active());
           if (reply.text) {

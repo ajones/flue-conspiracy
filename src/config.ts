@@ -40,16 +40,39 @@ export interface HomeAssistantConfig {
   token: string;
 }
 
+export interface MemoryAgentConfig {
+  scope?: 'agent' | 'conversation';
+  maxRecall?: number;
+}
+
 export interface MemoryConfig {
   enabled?: boolean;
   url?: string;
   defaultScope?: 'agent' | 'conversation';
-  agents?: Record<string, { scope: 'agent' | 'conversation' }>;
+  maxRecall?: number;
+  agents?: Record<string, MemoryAgentConfig>;
 }
 
 export interface WorkspaceConfig {
   enabled?: boolean;
   dir?: string;
+}
+
+export interface VaultEntry {
+  collection: string;
+  matchThreshold?: number;
+}
+
+export interface VaultAccessRule {
+  vaults: string[];
+  matchThreshold?: number;
+}
+
+export interface VaultConfig {
+  enabled?: boolean;
+  matchThreshold?: number;
+  vaults?: VaultEntry[];
+  agents?: Record<string, VaultAccessRule>;
 }
 
 export interface RavenConfig {
@@ -61,6 +84,7 @@ export interface RavenConfig {
   homeassistant?: HomeAssistantConfig;
   memory?: MemoryConfig;
   workspace?: WorkspaceConfig;
+  vault?: VaultConfig;
   traceRetentionDays?: number;
 }
 
@@ -114,6 +138,11 @@ export function getMemoryScope(agentName: string): 'agent' | 'conversation' {
   return agents[agentName]?.scope ?? defaultScope;
 }
 
+export function getMemoryMaxRecall(agentName: string): number {
+  const { maxRecall = 10, agents = {} } = getMemoryConfig();
+  return agents[agentName]?.maxRecall ?? maxRecall;
+}
+
 export function getHomeAssistantConfig(): HomeAssistantConfig {
   const config = loadConfig();
   if (!config.homeassistant) {
@@ -128,6 +157,24 @@ export function getHomeAssistantConfig(): HomeAssistantConfig {
 export function getWorkspaceConfig(): WorkspaceConfig {
   const config = loadConfig();
   return config.workspace ?? {};
+}
+
+export function getVaultConfig(): VaultConfig {
+  const config = loadConfig();
+  return config.vault ?? {};
+}
+
+export function resolveVaultEntries(agent: string): VaultEntry[] {
+  const config = getVaultConfig();
+  if (!config.enabled || !config.vaults?.length) return [];
+
+  const agentRule = config.agents?.[agent];
+  if (!agentRule) return [];
+
+  return config.vaults.filter((v) => agentRule.vaults.includes(v.collection)).map((v) => ({
+    ...v,
+    matchThreshold: v.matchThreshold ?? agentRule.matchThreshold ?? config.matchThreshold,
+  }));
 }
 
 export function getGatewayUrl(): string {

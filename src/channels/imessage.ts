@@ -5,8 +5,7 @@ import { trackAgentInstance } from '../agent-names.ts';
 import { dispatchAndCollect } from '../dispatch-collect.ts';
 import { classifyTurn, type ConversationMessage } from '../turn/index.ts';
 import { createLogger } from '../log.ts';
-import { loadInfoSources } from '../info-sources.ts';
-import { loadPendingRequests } from '../pending-requests.ts';
+import { gatherContext, spreadContext } from '../context.ts';
 import { getImessageConfig, getImessageConversations, type ImessageConversationConfig } from '../config.ts';
 
 type ImsgChat = {
@@ -373,18 +372,7 @@ async function handleEvent(event: ImsgEvent) {
     const convKey = `imessage:chat:${chatId}`;
     trackAgentInstance(convKey, configuredAgent);
 
-    const [infoSources, pendingRequests] = await Promise.all([
-      loadInfoSources().catch(() => null),
-      loadPendingRequests().catch(() => null),
-    ]);
-    if (infoSources) {
-      log.debug('Info sources loaded', { length: infoSources.length });
-      span.addEvent('info_sources.loaded', { 'raven.info_sources.length': infoSources.length });
-    }
-    if (pendingRequests) {
-      log.debug('Pending requests loaded', { length: pendingRequests.length });
-      span.addEvent('pending_requests.loaded', { 'raven.pending_requests.length': pendingRequests.length });
-    }
+    const ctx = await gatherContext({ text: normalized.text ?? '', agent: configuredAgent, conversationKey: convKey });
 
     span.addEvent('dispatching', {
       'raven.agent': configuredAgent,
@@ -409,8 +397,7 @@ async function handleEvent(event: ImsgEvent) {
         attachments: normalized.attachments,
         isFromMe: normalized.isFromMe,
         raw: normalized.raw,
-        ...(infoSources ? { infoSources } : {}),
-        ...(pendingRequests ? { pendingRequests } : {}),
+        ...spreadContext(ctx),
       },
     }, otelContext.active());
 
