@@ -9,6 +9,7 @@ import { Scheduler, createJobRoutes } from './scheduler/index.ts';
 import { getSchedulerConfig, getMemoryConfig } from './config.ts';
 import { initMemory } from './memory/index.ts';
 import { registerMemoryObserver } from './memory/observer.ts';
+import { registerToolObserver } from './tool-observer.ts';
 import { log } from './log.ts';
 
 const token = await getAccessToken();
@@ -22,6 +23,8 @@ if (memConfig.enabled !== false) {
     log.error('Memory init failed', { error: String(err) });
   });
 }
+
+registerToolObserver();
 
 const scheduler = new Scheduler(getSchedulerConfig());
 const app = new Hono();
