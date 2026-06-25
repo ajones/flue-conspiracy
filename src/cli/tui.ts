@@ -102,7 +102,7 @@ class Tui {
 
   private render() {
     const { rows, cols } = this;
-    const msgAreaHeight = rows - 3;
+    const msgAreaHeight = rows - 6;
     const contentWidth = cols - 4;
 
     const lines: string[] = [];
@@ -129,8 +129,11 @@ class Tui {
     }
 
     out += `${DIM}${'─'.repeat(cols)}${RESET}\n`;
-    out += `${GREEN}${BOLD}▹ ${RESET}${this.input}${CLR}`;
-    out += moveTo(rows, 3 + this.cursor) + '\x1b[?25h';
+    out += `${GREEN}${BOLD}❯ ${RESET}${this.input}${CLR}\n`;
+    out += `${DIM}${'─'.repeat(cols)}${RESET}\n`;
+    const status = `${DIM}${this.agent}${RESET}  ${DIM}ctrl+c to ${this.input ? 'clear' : 'exit'}${RESET}`;
+    out += status + CLR;
+    out += moveTo(rows - 3, 3 + this.cursor) + '\x1b[?25h';
 
     process.stdout.write(out);
   }
@@ -138,7 +141,15 @@ class Tui {
   private onKey(data: Buffer) {
     const s = data.toString();
 
-    if (s === '\x03' || s === '\x04') return this.exit();
+    if (s === '\x03') {
+      if (this.input.length > 0) {
+        this.input = '';
+        this.cursor = 0;
+        return this.render();
+      }
+      return this.exit();
+    }
+    if (s === '\x04') return this.exit();
 
     if (s === '\r') {
       if (this.busy) return;
@@ -173,6 +184,12 @@ class Tui {
         this.input = this.input.slice(0, this.cursor) + this.input.slice(this.cursor + 1);
         this.render();
       }
+      return;
+    }
+
+    if (s === '\x1b[A') {
+      const last = [...this.messages].reverse().find(m => m.role === 'user');
+      if (last) { this.input = last.content; this.cursor = this.input.length; this.render(); }
       return;
     }
 

@@ -1,10 +1,13 @@
 import { dispatch, type AgentRouteHandler } from '@flue/runtime';
 import type { EventStreamStore } from '@flue/runtime/adapter';
-import { context as otelContext } from '@opentelemetry/api';
+import { SpanStatusCode, context as otelContext, trace } from '@opentelemetry/api';
 import adapter from './db.ts';
 import { gatherContext, spreadContext } from './context.ts';
 import { trackAgentInstance } from './agent-names.ts';
 import { trackDispatchContext } from './instrumentation.ts';
+import { createLogger } from './log.ts';
+
+const tracer = trace.getTracer('raven');
 
 function agentStreamPath(agentName: string, instanceId: string): string {
   return `agents/${agentName}/${instanceId}`;
@@ -44,6 +47,8 @@ async function getStreamOffset(agentName: string, instanceId: string): Promise<s
 }
 
 export function createContextGatheringRoute(agentName: string): AgentRouteHandler {
+  const tuiLog = createLogger(`tui:${agentName}`);
+
   return async (c, next) => {
     if (c.req.method !== 'POST') return next();
 
@@ -57,30 +62,68 @@ export function createContextGatheringRoute(agentName: string): AgentRouteHandle
     if (typeof body.message !== 'string') return next();
 
     const id = c.req.param('id') ?? '';
-    trackAgentInstance(id, agentName);
 
-    const ctx = await gatherContext({
-      text: body.message,
-      agent: agentName,
-      conversationKey: id,
-    });
-
-    const receipt = await dispatch({
-      agent: agentName,
-      id,
-      input: {
-        type: 'tui.message',
-        text: body.message,
-        ...(body.images ? { images: body.images } : {}),
-        ...spreadContext(ctx),
+    return tracer.startActiveSpan('tui.message', {
+      attributes: {
+        'raven.agent': agentName,
+        'raven.conversation': id,
+        'raven.tui.text_length': body.message.length,
       },
+    }, async (span) => {
+      try {
+        tuiLog.info('Message received', { instanceId: id, text: body.message.slice(0, 80) });
+        span.addEvent('message.received', {
+          'raven.tui.text_length': body.message.length,
+        });
+        if (body.message) {
+          span.setAttribute('raven.tui.message', body.message.slice(0, 4000));
+        }
+
+        trackAgentInstance(id, agentName);
+
+        const ctx = await gatherContext({
+          text: body.message,
+          agent: agentName,
+          conversationKey: id,
+        });
+
+        tuiLog.debug('Dispatching to agent', { agent: agentName, instanceId: id });
+        span.addEvent('dispatching', {
+          'raven.agent': agentName,
+          'raven.conversation': id,
+        });
+
+        const receipt = await dispatch({
+          agent: agentName,
+          id,
+          input: {
+            type: 'tui.message',
+            text: body.message,
+            ...(body.images ? { images: body.images } : {}),
+            ...spreadContext(ctx),
+          },
+        });
+
+        if (receipt.dispatchId) {
+          span.setAttribute('raven.tui.dispatch_id', receipt.dispatchId);
+          trackDispatchContext(receipt.dispatchId, otelContext.active());
+        }
+
+        const streamUrl = invocationStreamUrl(c.req.raw);
+        const offset = await getStreamOffset(agentName, id);
+
+        span.setStatus({ code: SpanStatusCode.OK });
+        return admissionResponse({ streamUrl, offset }, streamUrl, offset);
+      } catch (err) {
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: err instanceof Error ? err.message : String(err),
+        });
+        span.recordException(err instanceof Error ? err : new Error(String(err)));
+        throw err;
+      } finally {
+        span.end();
+      }
     });
-
-    trackDispatchContext(receipt.dispatchId, otelContext.active());
-
-    const streamUrl = invocationStreamUrl(c.req.raw);
-    const offset = await getStreamOffset(agentName, id);
-
-    return admissionResponse({ streamUrl, offset }, streamUrl, offset);
   };
 }
