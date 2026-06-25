@@ -25,8 +25,23 @@ function npxPath(): string {
   }
 }
 
+function nodePath(): string {
+  try {
+    return execSync('which node', { encoding: 'utf-8' }).trim();
+  } catch {
+    return '/usr/local/bin/node';
+  }
+}
+
+function build() {
+  console.log('Building...');
+  execSync('npx flue build', { cwd: PROJECT_ROOT, stdio: 'inherit' });
+}
+
+const SERVER_ENTRY = join(PROJECT_ROOT, 'dist', 'server.mjs');
+
 function buildPlist(): string {
-  const npx = npxPath();
+  const node = nodePath();
   const { port } = loadConfig();
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -37,11 +52,8 @@ function buildPlist(): string {
   <string>${LABEL}</string>
   <key>ProgramArguments</key>
   <array>
-    <string>${npx}</string>
-    <string>flue</string>
-    <string>dev</string>
-    <string>--port</string>
-    <string>${port}</string>
+    <string>${node}</string>
+    <string>${SERVER_ENTRY}</string>
   </array>
   <key>WorkingDirectory</key>
   <string>${PROJECT_ROOT}</string>
@@ -57,6 +69,8 @@ function buildPlist(): string {
   <dict>
     <key>PATH</key>
     <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+    <key>PORT</key>
+    <string>${port}</string>
   </dict>
 </dict>
 </plist>`;
@@ -98,15 +112,17 @@ export async function start() {
     return;
   }
 
-  const npx = npxPath();
+  build();
+
+  const node = nodePath();
   const outFd = openSync(join(LOG_DIR, 'stdout.log'), 'a');
   const errFd = openSync(join(LOG_DIR, 'stderr.log'), 'a');
 
-  const child = spawn(npx, ['flue', 'dev', '--port', String(port)], {
+  const child = spawn(node, [SERVER_ENTRY], {
     cwd: PROJECT_ROOT,
     stdio: ['ignore', outFd, errFd],
     detached: true,
-    env: { ...process.env },
+    env: { ...process.env, PORT: String(port) },
   });
 
   child.unref();
@@ -175,6 +191,8 @@ export async function install() {
   }
 
   mkdirSync(LOG_DIR, { recursive: true });
+
+  build();
 
   // Ensure Jaeger is downloaded and config is written
   await startJaeger();
