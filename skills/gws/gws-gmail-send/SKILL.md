@@ -1,13 +1,12 @@
 ---
 name: gws-gmail-send
+version: 1.0.0
 description: "Gmail: Send an email."
 metadata:
-  version: 0.22.5
   openclaw:
     category: "productivity"
     requires:
-      bins:
-        - gws
+      bins: ["gws"]
     cliHelp: "gws gmail +send --help"
 ---
 
@@ -36,7 +35,6 @@ gws gmail +send --to <EMAILS> --subject <SUBJECT> --body <TEXT>
 | `--bcc` | — | — | BCC email address(es), comma-separated |
 | `--html` | — | — | Treat --body as HTML content (default is plain text) |
 | `--dry-run` | — | — | Show the request that would be sent without executing it |
-| `--draft` | — | — | Save as draft instead of sending |
 
 ## Examples
 
@@ -47,7 +45,6 @@ gws gmail +send --to alice@example.com --subject 'Hello' --body '<b>Bold</b> tex
 gws gmail +send --to alice@example.com --subject 'Hello' --body 'Hi!' --from alias@example.com
 gws gmail +send --to alice@example.com --subject 'Report' --body 'See attached' -a report.pdf
 gws gmail +send --to alice@example.com --subject 'Files' --body 'Two files' -a a.pdf -a b.csv
-gws gmail +send --to alice@example.com --subject 'Hello' --body 'Hi!' --draft
 ```
 
 ## Tips
@@ -56,7 +53,6 @@ gws gmail +send --to alice@example.com --subject 'Hello' --body 'Hi!' --draft
 - Use --from to send from a configured send-as alias instead of your primary address.
 - Use -a/--attach to add file attachments. Can be specified multiple times. Total size limit: 25MB.
 - With --html, use fragment tags (<p>, <b>, <a>, <br>, etc.) — no <html>/<body> wrapper needed.
-- Use --draft to save the message as a draft instead of sending it immediately.
 
 > [!CAUTION]
 > This is a **write** command — confirm with the user before executing.
