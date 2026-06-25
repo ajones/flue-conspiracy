@@ -1,10 +1,11 @@
 import { trace } from '@opentelemetry/api';
-import { getMemoryConfig, getMemoryMaxRecall, getMemoryScope, resolveVaultEntries } from './config.ts';
+import { getMemoryConfig, getMemoryMaxRecall, getMemoryScope, getWorkspaceConfig, resolveVaultEntries } from './config.ts';
 import { classifySkills, formatSkillContext, type ClassifiedSkills } from './skills/index.ts';
 import { isMemoryAvailable, recallMemory } from './memory/index.ts';
 import { loadInfoSources } from './info-sources.ts';
 import { loadPendingRequests } from './pending-requests.ts';
 import { loadVaultContext } from './vault-checker.ts';
+import { resolveAgentWorkspace } from './workspace/index.ts';
 import { createLogger } from './log.ts';
 
 const log = createLogger('context');
@@ -16,6 +17,7 @@ export interface DispatchContext {
   infoSources?: string;
   pendingRequests?: string;
   vaultContext?: string;
+  workspacePath?: string;
 }
 
 export interface GatherOptions {
@@ -31,6 +33,7 @@ export interface GatherOptions {
 
 export async function gatherContext(options: GatherOptions): Promise<DispatchContext> {
   const { text, agent, conversationKey, skipSkills, skipVault, skipInfoSources, skipPendingRequests, skipMemory } = options;
+  const startedAt = Date.now();
 
   return tracer.startActiveSpan('context.gather', async (span) => {
     span.setAttribute('raven.context.agent', agent);
@@ -44,7 +47,7 @@ export async function gatherContext(options: GatherOptions): Promise<DispatchCon
       const ctx: DispatchContext = {};
 
       const skillsPromise = (!skipSkills && text)
-        ? classifySkills(text).catch((): ClassifiedSkills => ({ enabled: [], disabled: [], reasoning: '' }))
+        ? classifySkills(text, { agentName: agent }).catch((): ClassifiedSkills => ({ enabled: [], disabled: [], reasoning: '' }))
         : Promise.resolve(null);
 
       const memoryPromise = (!skipMemory && text && isMemoryAvailable())
@@ -115,7 +118,24 @@ export async function gatherContext(options: GatherOptions): Promise<DispatchCon
         span.addEvent('vault_context.loaded', { 'raven.vault.length': vaultResult.length });
       }
 
+      if (agent === 'task-master') {
+        const wsConfig = getWorkspaceConfig();
+        if (wsConfig.enabled !== false) {
+          ctx.workspacePath = resolveAgentWorkspace(wsConfig, agent);
+          log.debug('Workspace path set', { workspacePath: ctx.workspacePath });
+          span.setAttribute('raven.workspace.path', ctx.workspacePath);
+        }
+      }
+
+      log.debug('Context gathered', { agent, durationMs: Date.now() - startedAt });
       return ctx;
+    } catch (err) {
+      log.error('Context gather failed', {
+        agent,
+        durationMs: Date.now() - startedAt,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
     } finally {
       span.end();
     }
@@ -143,6 +163,12 @@ function buildContextInstructions(ctx: DispatchContext): string | undefined {
     );
   }
 
+  if (ctx.workspacePath) {
+    parts.push(
+      `workspacePath: ${ctx.workspacePath} — use this path for all task tool calls unless a delegator specifies a different workspace.`,
+    );
+  }
+
   return parts.length > 0 ? parts.join('\n\n') : undefined;
 }
 
@@ -153,6 +179,7 @@ export function spreadContext(ctx: DispatchContext): Record<string, string> {
   if (ctx.infoSources) out.infoSources = ctx.infoSources;
   if (ctx.pendingRequests) out.pendingRequests = ctx.pendingRequests;
   if (ctx.vaultContext) out.vaultContext = ctx.vaultContext;
+  if (ctx.workspacePath) out.workspacePath = ctx.workspacePath;
 
   const instructions = buildContextInstructions(ctx);
   if (instructions) out.contextInstructions = instructions;

@@ -7,9 +7,9 @@ You are Raven running as an isolated cron agent in the ~/.openclaw/workspace. Yo
 1. Change directory to the workspace root: cd ~/.openclaw/workspace.
 2. Run the Leo helper script: ./skills/swim-class-finder/scripts/leo_makeups.sh. Capture its output.
 3. Run the Cody helper script: ./skills/swim-class-finder/scripts/cody_makeups.sh. Capture its output.
-4. If both scripts fail (non-zero exit or obvious error), respond with `HEARTBEAT_OK` and stop.
+4. If both scripts fail (non-zero exit or obvious error), respond with `NO_REPLY` and stop.
 5. For each child, if the script succeeds but there are no available makeup classes (empty or clearly "no results" output), note that child has no options.
-6. **If neither child has options, respond with `HEARTBEAT_OK` and stop.** Do not summarize what you checked. Do not describe where a message would have gone. Just `HEARTBEAT_OK`.
+6. **If neither child has options, respond with `NO_REPLY` and stop.** Do not summarize what you checked. Do not describe where a message would have gone. Just `NO_REPLY`.
 7. If at least one child has available classes, parse the output enough to extract, for each option: date, time, level, and any location or instructor info present.
 8. Compose a concise summary for Aaron listing the makeup options, organized by child (Leo section, then Cody section). If one child has no options, say so briefly.
 

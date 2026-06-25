@@ -2,13 +2,15 @@
 
 ## Task
 
+![[components/home-assistant-delegate.md]]
+
 It is Friday morning. Trash pickup happened Wednesday. There are **two cans**: a blue (recycling) can and a black (trash) can. Check whether **both** cans have been brought back in from the street curb to the driveway. Sometimes the trucks run late on different days, so one can may come back before the other — only one can being back does not count as done.
 
 ![[components/ring-live-snapshot.md?CAMERA_ENTITY=camera.driveway_live_view&SNAP_NAME=trash-cans-back-check-snap]]
 
 ## Step 2 – Analyze the image
 
-Read and examine the snapshot file you just downloaded (the `$SNAP` path) using your image-reading capability.
+Read and examine the snapshot file at the `path` returned by `ha_ring_live_snapshot` using your image-reading capability.
 
 This is a security camera looking down the driveway toward the street. The driveway runs roughly center-to-right in the frame; the street is on the **far left** of the image.
 
@@ -20,7 +22,7 @@ Identify each can individually by color (blue recycling, black trash) and note i
 **Decision:**
 - **Both** cans are visible in the center or right (back in the driveway) → continue to Step 3 with a celebratory message.
 - **Either or both** cans are still on the far left (at the curb) — including if one can is back but the other isn't — → continue to Step 3 with a "still out" reminder, specifying which can(s) are still out.
-- Image is **too dark, unclear, or inconclusive** → reply with exactly `HEARTBEAT_OK` and stop. Do not send a false alarm.
+- Image is **too dark, unclear, or inconclusive** → reply with exactly `NO_REPLY` and stop. Do not send a false alarm.
 
 ## Step 3 – Compose message
 

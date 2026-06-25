@@ -2,13 +2,15 @@
 
 ## Task
 
+![[components/home-assistant-delegate.md]]
+
 This job runs Tuesday evening and Wednesday morning, around trash pickup. Check whether the trash cans are still in the driveway — meaning they have **not** yet been rolled out to the street for trash pickup (pickup is Wednesday morning).
 
 ![[components/ring-live-snapshot.md?CAMERA_ENTITY=camera.driveway_live_view&SNAP_NAME=trash-day-check-snap]]
 
 ## Step 2 – Analyze the image
 
-Read and examine the snapshot file you just downloaded (the `$SNAP` path) using your image-reading capability.
+Read and examine the snapshot file at the `path` returned by `ha_ring_live_snapshot` using your image-reading capability.
 
 This is a security camera looking down the driveway toward the street. The driveway runs roughly center-to-right in the frame; the street is on the **far left** of the image.
 
@@ -18,7 +20,7 @@ This is a security camera looking down the driveway toward the street. The drive
 **Decision:**
 - Trash cans are **visible in the center or right (still in the driveway)** → continue to Step 3.
 - Trash cans are **on the far left (at the street curb)** or **not visible in the driveway** (already put out) → continue to Step 3, but write a short congratulations message to Aaron and Ashley instead of a reminder.
-- Image is **too dark, unclear, or inconclusive** → reply with exactly `HEARTBEAT_OK` and stop. Do not send a false alarm.
+- Image is **too dark, unclear, or inconclusive** → reply with exactly `NO_REPLY` and stop. Do not send a false alarm.
 
 ## Step 3 – Compose message
 

@@ -26,8 +26,64 @@
   skills: {
     defaultEnabled: true,
     overrides: {
-      // "dad-joke": false,
-      // "swim-class-finder": false,
+      // gws-calendar
+      "gws:gws-calendar": false,
+      "gws:gws-calendar-insert": false,
+
+      // model armor
+      "gws:gws-modelarmor": false,
+      "gws:gws-modelarmor-create-template": false,
+      "gws:gws-modelarmor-sanitize-prompt": false,
+      "gws:gws-modelarmor-sanitize-response": false,
+
+      // skills built for other systems
+      "cron-creator": false,
+
+      // homeassistant: use home-assistant subagent (typed tools) instead of shell curl
+      "homeassistant": false,
+
+      // recipes
+      "recipe-backup-sheet-as-csv": false,
+      "recipe-batch-invite-to-event": false,
+      "recipe-block-focus-time": false,
+      "recipe-bulk-download-folder": false,
+      "recipe-collect-form-responses": false,
+      "recipe-compare-sheet-tabs": false,
+      "recipe-copy-sheet-for-new-month": false,
+      "recipe-create-classroom-course": false,
+      "recipe-create-doc-from-template": false,
+      "recipe-create-events-from-sheet": false,
+      "recipe-create-expense-tracker": false,
+      "recipe-create-feedback-form": false,
+      "recipe-create-gmail-filter": false,
+      "recipe-create-meet-space": false,
+      "recipe-create-presentation": false,
+      "recipe-create-shared-drive": false,
+      "recipe-create-task-list": false,
+      "recipe-create-vacation-responder": false,
+      "recipe-draft-email-from-doc": false,
+      "recipe-email-drive-link": false,
+      "recipe-find-free-time": false,
+      "recipe-find-large-files": false,
+      "recipe-forward-labeled-emails": false,
+      "recipe-generate-report-from-sheet": false,
+      "recipe-label-and-archive-emails": false,
+      "recipe-log-deal-update": false,
+      "recipe-organize-drive-folder": false,
+      "recipe-plan-weekly-schedule": false,
+      "recipe-post-mortem-setup": false,
+      "recipe-reschedule-meeting": false,
+      "recipe-review-meet-participants": false,
+      "recipe-review-overdue-tasks": false,
+      "recipe-save-email-attachments": false,
+      "recipe-save-email-to-doc": false,
+      "recipe-schedule-recurring-event": false,
+      "recipe-send-team-announcement": false,
+      "recipe-share-doc-and-notify": false,
+      "recipe-share-event-materials": false,
+      "recipe-share-folder-with-team": false,
+      "recipe-sync-contacts-to-sheet": false,
+      "recipe-watch-drive-changes": false,
     },
   },
 

@@ -34,3 +34,12 @@ When `skillContext` names a skill with `path` and `directory`:
 You run with direct host filesystem and shell access. Commands use the host `PATH` and run in the agent workspace directory unless a skill specifies otherwise.
 
 - If a required binary is missing or returns “command not found”, stop and report — do not chain exploratory diagnostics unless the user asked for debugging.
+
+## Home Assistant
+
+**Mandatory:** delegate every Home Assistant interaction to the `home-assistant` subagent.
+
+- Reads, writes, snapshots, templates, audits — all via subagent `ha_*` tools
+- Never shell `curl` / Python against HA; never use `$HOMEASSISTANT_URL` or `$HOMEASSISTANT_TOKEN`
+- The `homeassistant` skill is disabled — do not load or execute it
+- You do not have `ha_*` tools yourself

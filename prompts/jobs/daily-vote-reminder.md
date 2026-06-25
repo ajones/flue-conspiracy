@@ -2,7 +2,7 @@
 
 ## Behavior
 
-It's 7pm PT. Check today's date. If today is after 2026-06-02, output `HEARTBEAT_OK` and stop — do not post anything.
+It's 7pm PT. Check today's date. If today is after 2026-06-02, output `NO_REPLY` and stop — do not post anything.
 
 Otherwise, run the following command and capture its output as `INDEX`:
 

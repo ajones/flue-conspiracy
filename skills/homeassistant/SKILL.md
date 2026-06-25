@@ -19,13 +19,33 @@ metadata:
 
 # Home Assistant Skill
 
+> **Disabled for raven-lead.** Do not load or execute this skill in agent sessions. All Home Assistant work goes through the `home-assistant` subagent and its `ha_*` tools (`ha_get_entity`, `ha_call_service`, `ha_ring_live_snapshot`, etc.). This file remains as reference documentation only.
+
 ## Overview
 
 Interact with the Home Assistant instance via its REST API.
 
-Environment variables:
+Environment variables (injected from `raven.json5` into the agent shell):
 - `HOMEASSISTANT_URL` — base URL (e.g. `http://192.168.86.244:8123`)
 - `HOMEASSISTANT_TOKEN` — long-lived access token
+
+Do **not** hardcode URL/token in bash, and do **not** source stale copies from `~/.openclaw/workspace/.homeassistant`. Always use `$HOMEASSISTANT_URL` and `$HOMEASSISTANT_TOKEN`.
+
+**jq pitfalls:** In jq, `|` binds tighter than `or`. This is wrong and yields `Cannot index string with string "entity_id"`:
+
+```jq
+# WRONG — parses as ((.entity_id | startswith("climate.")) or .entity_id) | test(...)
+select(.entity_id|startswith("climate.") or .entity_id|test("sensor\\..*"))
+```
+
+Parenthesize each pipe chain on both sides of `or`:
+
+```jq
+# CORRECT
+select((.entity_id | startswith("climate.")) or (.entity_id | test("sensor\\..*")))
+```
+
+Before piping curl output to jq, run the sanity check in section 1. A 401 returns plain text `401: Unauthorized`, which jq cannot parse (`Expected string key before ':' at line 1, column 4`).
 
 **Time display rule:** All timestamps must be shown in Pacific time (America/Los_Angeles — PST/PDT). HA returns timestamps in UTC. Convert before displaying using:
 

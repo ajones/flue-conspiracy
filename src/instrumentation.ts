@@ -9,6 +9,7 @@ import { type Context, context as otelContext, trace as otelTrace } from '@opent
 import { createOpenTelemetryObserver } from '@flue/opentelemetry';
 import { observe } from '@flue/runtime';
 import { getAgentName } from './agent-names.ts';
+import { compactLargeAttributes } from './trace-content.ts';
 
 const dispatchContexts = new Map<string, Context>();
 
@@ -18,28 +19,6 @@ export function trackDispatchContext(dispatchId: string, ctx: Context): void {
 
 export function untrackDispatchContext(dispatchId: string): void {
   dispatchContexts.delete(dispatchId);
-}
-
-const ATTR_MAX_LENGTH = 16_000;
-const LARGE_ATTRS = new Set([
-  'flue.turn.input', 'flue.turn.output',
-  'flue.task.prompt', 'flue.task.result',
-  'flue.tool.arguments', 'flue.tool.result',
-  'flue.operation.result', 'flue.workflow.payload', 'flue.workflow.result',
-]);
-
-function truncateAttributes(attrs: Record<string, unknown>): Record<string, unknown> {
-  let changed = false;
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(attrs)) {
-    if (LARGE_ATTRS.has(k) && typeof v === 'string' && v.length > ATTR_MAX_LENGTH) {
-      out[k] = v.slice(0, ATTR_MAX_LENGTH) + `... [truncated ${v.length - ATTR_MAX_LENGTH} chars]`;
-      changed = true;
-    } else {
-      out[k] = v;
-    }
-  }
-  return changed ? out : attrs;
 }
 
 class AgentServiceNameExporter implements SpanExporter {
@@ -78,11 +57,22 @@ class AgentServiceNameExporter implements SpanExporter {
                 ? getAgentName(instanceId)
                 : undefined;
 
-      const truncated = truncateAttributes(span.attributes as Record<string, unknown>);
+      const { traceId, spanId } = span.spanContext();
+      let processed = span.attributes as Record<string, unknown>;
+      let attrsChanged = false;
+      try {
+        ({ attrs: processed, changed: attrsChanged } = compactLargeAttributes(
+          traceId,
+          spanId,
+          span.attributes as Record<string, unknown>,
+        ));
+      } catch {
+        // never drop a span due to spill I/O failure
+      }
       const overrides: Record<string, PropertyDescriptor> = {};
 
-      if (truncated !== span.attributes) {
-        overrides.attributes = { value: truncated, enumerable: true };
+      if (attrsChanged) {
+        overrides.attributes = { value: processed, enumerable: true };
       }
 
       if (serviceName) {

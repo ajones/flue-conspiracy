@@ -2,6 +2,9 @@ import { dispatch, observe } from '@flue/runtime';
 import type { NamedAgentDispatchRequest } from '@flue/runtime';
 import type { Context } from '@opentelemetry/api';
 import { trackDispatchContext } from './instrumentation.ts';
+import { createLogger } from './log.ts';
+
+const log = createLogger('dispatch');
 
 const DEFAULT_TIMEOUT_MS = 300_000;
 
@@ -25,19 +28,45 @@ export function dispatchAndCollect(
     : (parentContextOrOptions as DispatchAndCollectOptions) ?? {};
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
+  const instanceId = 'id' in request ? request.id : undefined;
+
+  const agent = request.agent;
+  log.info('Dispatching', { agent, instanceId, timeoutMs });
+
   return new Promise((resolve, reject) => {
     let unsub: (() => void) | undefined;
     const timeout = setTimeout(() => {
       unsub?.();
-      reject(new Error('dispatchAndCollect timeout'));
+      const msg = `dispatchAndCollect timeout after ${timeoutMs}ms`;
+      log.error(msg, { agent, instanceId });
+      reject(new Error(msg));
     }, timeoutMs);
 
     dispatch(request).then((receipt) => {
+      log.debug('Dispatch admitted', { agent, instanceId, dispatchId: receipt.dispatchId });
       if (opts.parentContext && receipt.dispatchId) {
         trackDispatchContext(receipt.dispatchId, opts.parentContext);
       }
       unsub = observe((event) => {
-        if (event.dispatchId !== receipt.dispatchId || event.type !== 'agent_end') return;
+        if (event.dispatchId !== receipt.dispatchId) return;
+        if (instanceId !== undefined && (event as any).instanceId !== instanceId) return;
+
+        if (event.type === 'operation' && (event as any).isError) {
+          clearTimeout(timeout);
+          unsub?.();
+          const errObj = (event as any).error;
+          const msg = typeof errObj?.message === 'string'
+            ? errObj.message
+            : typeof errObj === 'string'
+              ? errObj
+              : 'Agent operation failed';
+          log.error('Agent operation failed', { agent, instanceId, dispatchId: receipt.dispatchId, error: msg });
+          reject(new Error(msg));
+          return;
+        }
+
+        if (event.type !== 'agent_end') return;
+
         clearTimeout(timeout);
         unsub?.();
         const text = event.messages
@@ -47,10 +76,12 @@ export function dispatchAndCollect(
           .map((c: any) => c.text)
           .filter(Boolean)
           .join('\n');
+        log.info('Dispatch complete', { agent, instanceId, dispatchId: receipt.dispatchId, textLength: text.length });
         resolve({ dispatchId: receipt.dispatchId, text });
       });
     }).catch((err) => {
       clearTimeout(timeout);
+      log.error('Dispatch failed', { agent, instanceId, error: err instanceof Error ? err.message : String(err) });
       reject(err);
     });
   });

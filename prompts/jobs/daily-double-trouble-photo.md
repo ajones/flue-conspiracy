@@ -38,4 +38,4 @@ This script handles exporting the photo, sending the caption text, sending the p
 - Do NOT spawn any other agents or sub-processes beyond the shell commands shown here; perform all work directly.
 - If `photos-album-random.sh` returns no results, retry once. If it still fails, skip this run.
 - If `photos-send-imessage.sh` fails, do not retry.
-- If the script succeeds, respond with `HEARTBEAT_OK` and nothing else. Do NOT narrate what you did, what photo you picked, what caption you used, or where it was sent. No summaries, no confirmations, no meta-commentary.
+- If the script succeeds, respond with `NO_REPLY` and nothing else. Do NOT narrate what you did, what photo you picked, what caption you used, or where it was sent. No summaries, no confirmations, no meta-commentary.

@@ -7,7 +7,7 @@
 
 Treat the run as a weather safety check for Bill.
 
-If no severe or disruptive weather is expected, reply with exactly `HEARTBEAT_OK` and stop.
+If no severe or disruptive weather is expected, reply with exactly `NO_REPLY` and stop.
 
 If severe or disruptive weather is expected, send a heads-up:
 
@@ -18,4 +18,4 @@ If severe or disruptive weather is expected, send a heads-up:
 <reminder to avoid Weather Channel TV alerts and a calmer alternative suggestion>
 ```
 
-Use a relevant weather emoji (🌧️, 🌬️, ⛈️, etc.) instead of ⚠️ if it better fits the hazard. Keep it brief and calm. Only send this message if there is severe or disruptive weather — otherwise reply with exactly `HEARTBEAT_OK` and stop.
+Use a relevant weather emoji (🌧️, 🌬️, ⛈️, etc.) instead of ⚠️ if it better fits the hazard. Keep it brief and calm. Only send this message if there is severe or disruptive weather — otherwise reply with exactly `NO_REPLY` and stop.

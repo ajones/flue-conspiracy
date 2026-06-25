@@ -33,6 +33,17 @@ function nodePath(): string {
   }
 }
 
+function servicePath(): string {
+  const bunBin = join(homedir(), '.bun', 'bin');
+  return [
+    '/usr/local/bin',
+    '/usr/bin',
+    '/bin',
+    '/opt/homebrew/bin',
+    bunBin,
+  ].join(':');
+}
+
 function build() {
   console.log('Building...');
   execSync('npx flue build', { cwd: PROJECT_ROOT, stdio: 'inherit' });
@@ -68,7 +79,7 @@ function buildPlist(): string {
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
-    <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+    <string>${servicePath()}</string>
     <key>PORT</key>
     <string>${port}</string>
   </dict>
@@ -185,9 +196,9 @@ function buildJaegerPlist(): string {
 }
 
 export async function install() {
-  if (existsSync(PLIST_PATH)) {
-    console.log('Service already installed. Run `raven uninstall` first to reinstall.');
-    return;
+  if (existsSync(PLIST_PATH) || existsSync(JAEGER_PLIST_PATH)) {
+    console.log('Service already installed; reinstalling...');
+    await uninstall();
   }
 
   mkdirSync(LOG_DIR, { recursive: true });

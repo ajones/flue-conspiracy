@@ -5,6 +5,7 @@ import adapter from './db.ts';
 import { gatherContext, spreadContext } from './context.ts';
 import { trackAgentInstance } from './agent-names.ts';
 import { trackDispatchContext } from './instrumentation.ts';
+import { isClearCommand, clearAgentSession } from './session-reset.ts';
 import { createLogger } from './log.ts';
 
 const tracer = trace.getTracer('raven');
@@ -80,6 +81,17 @@ export function createContextGatheringRoute(agentName: string): AgentRouteHandle
         }
 
         trackAgentInstance(id, agentName);
+
+        if (isClearCommand(body.message)) {
+          await clearAgentSession(id);
+          span.addEvent('session.cleared');
+          tuiLog.info('Session cleared', { instanceId: id });
+          span.setStatus({ code: SpanStatusCode.OK });
+          return new Response(JSON.stringify({ cleared: true, message: 'Conversation cleared.' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
 
         const ctx = await gatherContext({
           text: body.message,

@@ -2,6 +2,7 @@ import { createAgent, defineAgentProfile } from '@flue/runtime';
 import { createContextGatheringRoute } from '../agent-route.ts';
 import { weatherManProfile } from './weather-man.ts';
 import { homeAssistantProfile } from './home-assistant.ts';
+import { taskMasterProfile } from './task-master.ts';
 import { appleNotesTools } from '../tools/apple-notes.ts';
 import { icalReaderTools } from '../tools/ical-reader.ts';
 import { withWorkspaceContext } from '../workspace/index.ts';
@@ -11,10 +12,22 @@ export const route = createContextGatheringRoute('raven-lead');
 
 const OPERATIONS = `Delegate to the right subagent based on what the user needs:
 - 'weather-man' for anything weather-related — current conditions, forecasts, highs/lows, weekly outlooks
-- 'home-assistant' for smart home control — lights, switches, sensors, thermostats, locks, device states, Home Assistant queries
+- 'task-master' for task lists — adding, updating, organizing tasks, reviewing deadlines, and nudging on overdue or in-progress work. Always include your Working directory as the workspace path.
 - Use the apple_notes_* tools directly for anything involving Apple Notes — reading, creating, updating, listing, or searching notes
 - Use the ical_* tools directly for calendar queries — upcoming events, date range lookups, fuzzy search across calendars. Always sync before querying if freshness matters.
 - 'mystery' when the reply needs to sound mysterious, cryptic, or enigmatic
+
+## Home Assistant (mandatory)
+
+For **any** smart home or Home Assistant request — device states, lights, switches, sensors, thermostats, locks, cameras, templates, audits, cron checks — you MUST delegate to the 'home-assistant' subagent.
+
+You do **not** have \`ha_*\` tools. The subagent does.
+
+**Never** for Home Assistant:
+- Run shell curl, Python, or other scripts against the HA REST/WebSocket API
+- Use \`$HOMEASSISTANT_URL\` / \`$HOMEASSISTANT_TOKEN\` in bash
+- Load or execute the \`homeassistant\` skill (disabled — use the subagent instead)
+- Guess device state from memory — always delegate and wait for the subagent result
 
 Reply to the user with the result. Your text response will be delivered to the user automatically.`;
 
@@ -33,6 +46,7 @@ export default createAgent(() => {
       }),
       weatherManProfile,
       homeAssistantProfile,
+      taskMasterProfile,
     ],
   });
 

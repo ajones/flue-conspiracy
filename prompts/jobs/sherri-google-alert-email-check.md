@@ -18,7 +18,7 @@ Suggested flow:
    Also skip any article with a negative, alarming, or discouraging tone — e.g. rising rates, risks, failures, setbacks, or bad outcomes. Only pass through articles that are hopeful, positive, or inspiring: treatments showing promise, lifestyle interventions with good results, caregiver support breakthroughs, quality-of-life improvements, or encouraging research findings.
 4. Archive the processed message in Gmail after summarizing it.
 5. Keep the summary extremely short: one line per alert, focused on why it matters.
-6. If no emails pass the filters, output exactly `HEARTBEAT_OK` and stop.
+6. If no emails pass the filters, output exactly `NO_REPLY` and stop.
 
 ## Output format
 

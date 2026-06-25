@@ -36,6 +36,17 @@ Each agent has a workspace directory. Check the config file to build the path to
 
 The agent is defined in `src/agent.ts` using `@flue/runtime`. Tools live in `src/tools/` as typed actions. Auth logic is isolated in `src/auth/`. The iMessage channel adapter is in `src/channels/imessage.ts`.
 
+## Project Paths
+
+Keep runtime data and implementation paths local to this repository. Do not write project-owned state under `~/.raven`, `~/.codex`, or other home-directory locations unless the data is genuinely user-global (e.g. OAuth tokens shared across projects).
+
+Project-local storage lives under `.data/` (not `data/`):
+
+- `.data/flue.db` — Flue session and conversation data
+- `.data/trace-content/` — full trace prompts and results spilled when span attributes exceed the export size limit
+
+Resolve paths from the project root (e.g. via `findProjectRoot()` in `src/workspace/index.ts`), not from the process working directory.
+
 ## Chat Interface
 
 Use the Flue TUI exclusively. Do not build a custom terminal UI, web UI, or any other chat frontend. The TUI is started with `npx flue dev` and handles input, output, history, and rendering.
@@ -156,7 +167,7 @@ The `target` is a conversation key that tells the agent where to send results. F
 ```
 telegram:v1:regular:chat:<chatId>:thread::direct:
 ```
-Find existing chat IDs by querying the `flue_sessions` table in `data/flue.db`.
+Find existing chat IDs by querying the `flue_sessions` table in `.data/flue.db`.
 
 ### Updating a Job
 

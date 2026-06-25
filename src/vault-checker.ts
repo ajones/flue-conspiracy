@@ -11,7 +11,26 @@ const tracer = trace.getTracer('raven');
 const MAX_RESULTS = 3;
 const MAX_QUERY_CHARS = 500;
 const QMD_TIMEOUT_MS = 25_000;
+const VAULT_LOAD_TIMEOUT_MS = 30_000;
 const DEFAULT_MATCH_THRESHOLD = 0.09;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${ms}ms`));
+    }, ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
 
 function resolveThreshold(vault: VaultEntry): number {
   if (typeof vault.matchThreshold === 'number' && Number.isFinite(vault.matchThreshold)) {
@@ -118,74 +137,77 @@ async function queryVault(
   return strong;
 }
 
+async function loadVaultContextInner(
+  queryText: string,
+  vaults: VaultEntry[],
+  span: { setAttribute(name: string, value: string | number | boolean): void; setStatus(status: { code: SpanStatusCode; message?: string }): void },
+): Promise<string | null> {
+  if (vaults.length === 0) {
+    span.setAttribute('raven.vault.skipped', true);
+    span.setStatus({ code: SpanStatusCode.OK });
+    return null;
+  }
+
+  if (!queryText.trim()) {
+    log.info('Skipping: empty query text');
+    span.setStatus({ code: SpanStatusCode.OK });
+    return null;
+  }
+
+  span.setAttribute('raven.vault.collections', vaults.map((v) => v.collection).join(','));
+  log.info('Querying vault', { collections: vaults.map((v) => v.collection) });
+
+  const allResults: QmdResult[][] = [];
+
+  for (const vault of vaults) {
+    try {
+      const results = await queryVault(queryText, vault);
+      if (results) allResults.push(results);
+    } catch (err) {
+      log.error('Query failed', { collection: vault.collection, error: String(err) });
+    }
+  }
+
+  if (allResults.length === 0) {
+    log.info('No vault matches');
+    span.setStatus({ code: SpanStatusCode.OK });
+    return null;
+  }
+
+  const formatted = allResults.map(formatResults).join('\n\n');
+  const note = [
+    'These documents have a high likelihood of being relevant to the conversation.',
+    'Read them before crafting a reply to the user.',
+    'The vault is intended to build an ever-increasing, improving, self-referential body of curated knowledge.',
+    "If you discover information has changed or you learn new information about this topic,",
+    "after completing the user's request offer to update the doc. Only offer this if it is relevant.",
+  ].join(' ');
+
+  const block = `<vault-context>\n${note}\n\n${formatted}\n</vault-context>`;
+  log.info('Vault matches found', { resultSets: allResults.length, length: block.length });
+  span.setAttribute('raven.vault.result_sets', allResults.length);
+  span.setAttribute('raven.vault.length', block.length);
+  span.setStatus({ code: SpanStatusCode.OK });
+  return block;
+}
+
 export async function loadVaultContext(
   queryText: string,
   vaults: VaultEntry[],
 ): Promise<string | null> {
   return tracer.startActiveSpan('vault_checker.load', async (span) => {
     try {
-      if (vaults.length === 0) {
-        span.setAttribute('raven.vault.skipped', true);
-        span.setStatus({ code: SpanStatusCode.OK });
-        return null;
-      }
-
-      if (!queryText.trim()) {
-        log.info('Skipping: empty query text');
-        span.setStatus({ code: SpanStatusCode.OK });
-        return null;
-      }
-
-      span.setAttribute('raven.vault.collections', vaults.map((v) => v.collection).join(','));
-
-      try {
-        await runQmd(['update']);
-      } catch (err) {
-        log.error('qmd update failed', { error: String(err) });
-      }
-
-      try {
-        await runQmd(['embed']);
-      } catch (err) {
-        log.error('qmd embed failed', { error: String(err) });
-      }
-
-      const allResults: QmdResult[][] = [];
-
-      for (const vault of vaults) {
-        try {
-          const results = await queryVault(queryText, vault);
-          if (results) allResults.push(results);
-        } catch (err) {
-          log.error('Query failed', { collection: vault.collection, error: String(err) });
-        }
-      }
-
-      if (allResults.length === 0) {
-        log.info('No vault matches');
-        span.setStatus({ code: SpanStatusCode.OK });
-        return null;
-      }
-
-      const formatted = allResults.map(formatResults).join('\n\n');
-      const note = [
-        'These documents have a high likelihood of being relevant to the conversation.',
-        'Read them before crafting a reply to the user.',
-        'The vault is intended to build an ever-increasing, improving, self-referential body of curated knowledge.',
-        "If you discover information has changed or you learn new information about this topic,",
-        "after completing the user's request offer to update the doc. Only offer this if it is relevant.",
-      ].join(' ');
-
-      const block = `<vault-context>\n${note}\n\n${formatted}\n</vault-context>`;
-      log.info('Vault matches found', { resultSets: allResults.length, length: block.length });
-      span.setAttribute('raven.vault.result_sets', allResults.length);
-      span.setAttribute('raven.vault.length', block.length);
-      span.setStatus({ code: SpanStatusCode.OK });
-      return block;
+      return await withTimeout(
+        loadVaultContextInner(queryText, vaults, span),
+        VAULT_LOAD_TIMEOUT_MS,
+        'vault_checker.load',
+      );
     } catch (err) {
-      span.setStatus({ code: SpanStatusCode.ERROR, message: err instanceof Error ? err.message : String(err) });
-      span.recordException(err instanceof Error ? err : new Error(String(err)));
-      throw err;
+      const msg = err instanceof Error ? err.message : String(err);
+      log.error('Vault context failed', { error: msg });
+      span.setStatus({ code: SpanStatusCode.ERROR, message: msg });
+      span.recordException(err instanceof Error ? err : new Error(msg));
+      return null;
     } finally {
       span.end();
     }

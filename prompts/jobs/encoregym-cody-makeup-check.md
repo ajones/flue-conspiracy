@@ -11,7 +11,7 @@ Use the Encore Gym skill to check Cody's current makeup situation.
 3. Determine:
    - how many eligible makeup classes Cody currently has
    - how many open gym makeup slots are currently available
-4. If Cody has no eligible makeups and no open gym slots available, respond with `HEARTBEAT_OK` and stop.
+4. If Cody has no eligible makeups and no open gym slots available, respond with `NO_REPLY` and stop.
 5. Compose a short user-facing message (not addressed to anyone — no "Tell Aaron:" or similar prefix) that:
    - gives the current count
    - reminds that open gym makeups need to be scheduled in advance

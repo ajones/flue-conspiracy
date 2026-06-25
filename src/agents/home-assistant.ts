@@ -3,6 +3,9 @@ import { createContextGatheringRoute } from '../agent-route.ts';
 import { getHomeAssistantConfig } from '../config.ts';
 import { createLogger } from '../log.ts';
 import { execFile } from 'node:child_process';
+import { readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createAgentSandbox } from '../sandbox.ts';
 
 const log = createLogger('home-assistant');
@@ -58,6 +61,129 @@ async function haFetch(path: string, init?: RequestInit): Promise<any> {
   }
   log.debug('HA response ok', { method, path });
   return parsed;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function assertSnapName(snapName: string): void {
+  if (!/^[a-z0-9][a-z0-9-]*$/i.test(snapName)) {
+    throw new Error(`Invalid snap_name: ${snapName}`);
+  }
+}
+
+function cleanupLocalSnapshots(snapName: string): void {
+  const prefix = `${snapName}-`;
+  for (const file of readdirSync(tmpdir())) {
+    if (file.startsWith(prefix) && file.endsWith('.jpg')) {
+      unlinkSync(join(tmpdir(), file));
+    }
+  }
+}
+
+function wsRecv(ws: WebSocket): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const onMessage = (event: MessageEvent) => {
+      cleanup();
+      try {
+        resolve(JSON.parse(String(event.data)));
+      } catch (err) {
+        reject(err);
+      }
+    };
+    const onError = () => {
+      cleanup();
+      reject(new Error('Home Assistant WebSocket error'));
+    };
+    const cleanup = () => {
+      ws.removeEventListener('message', onMessage);
+      ws.removeEventListener('error', onError);
+    };
+    ws.addEventListener('message', onMessage);
+    ws.addEventListener('error', onError);
+  });
+}
+
+async function connectHaWebSocket(url: string, token: string): Promise<WebSocket> {
+  const wsUrl = url.replace(/^http/i, 'ws') + '/api/websocket';
+  const ws = new WebSocket(wsUrl);
+  await new Promise<void>((resolve, reject) => {
+    ws.addEventListener('open', () => resolve(), { once: true });
+    ws.addEventListener('error', () => reject(new Error('Home Assistant WebSocket connect failed')), { once: true });
+  });
+
+  const authRequired = await wsRecv(ws);
+  if (authRequired.type !== 'auth_required') {
+    ws.close();
+    throw new Error(`Unexpected Home Assistant WebSocket message: ${authRequired.type}`);
+  }
+
+  ws.send(JSON.stringify({ type: 'auth', access_token: token }));
+  const authResult = await wsRecv(ws);
+  if (authResult.type !== 'auth_ok') {
+    ws.close();
+    throw new Error(`Home Assistant WebSocket auth failed: ${authResult.type}`);
+  }
+
+  return ws;
+}
+
+async function triggerRingLiveView(url: string, token: string, entityId: string): Promise<void> {
+  const ws = await connectHaWebSocket(url, token);
+  try {
+    ws.send(JSON.stringify({
+      id: 1,
+      type: 'camera/webrtc/offer',
+      entity_id: entityId,
+      offer: 'v=0',
+    }));
+    await wsRecv(ws);
+    await sleep(10_000);
+  } finally {
+    ws.close();
+  }
+}
+
+async function captureRingLiveSnapshot(entityId: string, snapName: string): Promise<{
+  path: string;
+  size: number;
+  entity_id: string;
+  snap_name: string;
+}> {
+  assertSnapName(snapName);
+  const { url, token } = haConfig();
+  cleanupLocalSnapshots(snapName);
+
+  log.info('ha_ring_live_snapshot wake', { entityId, snapName });
+  await triggerRingLiveView(url, token, entityId);
+
+  const haFilename = `/config/www/${snapName}.jpg`;
+  await haFetch('/services/camera/snapshot', {
+    method: 'POST',
+    body: JSON.stringify({ entity_id: entityId, filename: haFilename }),
+  });
+
+  await sleep(2_500);
+
+  const localPath = join(tmpdir(), `${snapName}-${Date.now()}.jpg`);
+  const res = await fetch(`${url}/local/${snapName}.jpg`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to download snapshot (${res.status})`);
+  }
+
+  const bytes = Buffer.from(await res.arrayBuffer());
+  writeFileSync(localPath, bytes);
+
+  const size = statSync(localPath).size;
+  if (size === 0) {
+    throw new Error('Snapshot file is empty');
+  }
+
+  log.info('ha_ring_live_snapshot saved', { entityId, snapName, path: localPath, size });
+  return { path: localPath, size, entity_id: entityId, snap_name: snapName };
 }
 
 const getStates = defineTool({
@@ -221,11 +347,37 @@ const renderTemplate = defineTool({
   },
 });
 
-export const homeAssistantTools = [getStates, callService, getEntityState, searchEntities, renderTemplate];
+const ringLiveSnapshot = defineTool({
+  name: 'ha_ring_live_snapshot',
+  description:
+    'Capture a live Ring camera snapshot. Wakes the camera via Home Assistant WebRTC, saves a JPEG on the HA server, downloads it locally, and returns the local file path.',
+  parameters: {
+    type: 'object',
+    properties: {
+      entity_id: {
+        type: 'string',
+        description: 'Camera entity ID (e.g. "camera.driveway_live_view")',
+      },
+      snap_name: {
+        type: 'string',
+        description: 'Base filename for the snapshot (letters, numbers, hyphens only; used for HA /local/ URL and local temp file prefix)',
+      },
+    },
+    required: ['entity_id', 'snap_name'],
+    additionalProperties: false,
+  },
+  async execute(args: Record<string, any>) {
+    const { entity_id, snap_name } = args as { entity_id: string; snap_name: string };
+    const result = await captureRingLiveSnapshot(entity_id, snap_name);
+    return JSON.stringify(result);
+  },
+});
+
+export const homeAssistantTools = [getStates, callService, getEntityState, searchEntities, renderTemplate, ringLiveSnapshot];
 
 export const homeAssistantProfile = defineAgentProfile({
   name: 'home-assistant',
-  description: 'Controls smart home devices via Home Assistant. Can check device states, turn things on/off, adjust climate settings, search for entities, and report sensor readings.',
+  description: 'REQUIRED for all Home Assistant work. Raven-lead must delegate here for every HA read, write, snapshot, and template query — never shell curl. Uses typed ha_* tools.',
   tools: homeAssistantTools,
   instructions: `You are Home Assistant, a smart home control agent connected to a Home Assistant instance.
 
@@ -235,6 +387,7 @@ You can:
 - Control climate systems (thermostats, AC, heating) — set modes, temperatures, fan speeds
 - Search for entities by name when unsure of the exact entity_id
 - Run template queries for advanced lookups (entities by integration, area listings)
+- Capture live Ring camera snapshots (ha_ring_live_snapshot)
 - Report sensor readings (temperature, humidity, battery levels, motion)
 
 Scenes first:
@@ -248,6 +401,7 @@ Tool selection:
 - ha_search_entities: fuzzy search by name pattern
 - ha_call_service: control devices (turn on/off, set temperature, etc.) or activate scenes
 - ha_render_template: advanced Jinja2 queries (integration lookups, area discovery)
+- ha_ring_live_snapshot: wake Ring cameras and download a live JPEG snapshot to a local temp file
 
 Service domain rules:
 - The service domain must match the entity domain: light.* → light.turn_on, switch.* → switch.turn_off

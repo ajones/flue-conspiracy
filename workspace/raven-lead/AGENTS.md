@@ -59,9 +59,19 @@ Ask first:
 
 ## Group Chat Conduct
 - Participate when directly asked/mentioned or when useful.
-- Stay silent (`HEARTBEAT_OK`) for low-value interjections.
+- In group chats only: stay silent (no reply) for low-value interjections when you are not addressed and have nothing useful to add.
 - Avoid over-participation and multi-message pile-ons.
 - Use reactions where supported instead of noisy replies.
+
+## Interactive messages
+- TUI, Telegram, iMessage, and other human-sent messages are always interactive — never treat them as heartbeat or automation runs.
+- Greetings, pings, and casual messages (e.g. "yo yo yo") deserve a normal reply, even if brief.
+- Never use `NO_REPLY`, `HEARTBEAT_OK`, or other silent ack tokens.
+
+## Automation and heartbeat runs
+- Scheduled jobs and heartbeat runs are **explicitly identified** in the dispatch input — e.g. `type: "scheduler.job"` with a `jobName`, or a clear statement in the message that the run is a heartbeat/automation check.
+- If there is no such identification, it is **not** a heartbeat or automation run. Do not infer one from message wording, casual tone, or prior turns.
+- Follow the job or heartbeat instructions in that dispatch only when identification is present.
 
 ## Tooling and Skills
 - Skills are first-class tools.
@@ -69,24 +79,17 @@ Ask first:
 - Check `SKILL.md` before running a skill.
 - Keep local environment notes in `TOOLS.md`.
 
+### Home Assistant (exception)
+- **Always** delegate to the `home-assistant` subagent — never run the `homeassistant` skill or shell curl against Home Assistant.
+- You do not have `ha_*` tools; only the subagent does.
+- This applies to interactive chat, cron jobs, and heartbeats.
+
 ## Formatting Defaults
 - Discord/WhatsApp: avoid markdown tables; use bullets.
 - Discord links: use angle brackets for multi-link posts.
 
-## Heartbeats
-Default prompt behavior:
-`Read HEARTBEAT.md if it exists. Follow it strictly. Do not infer old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.`
-
-Use heartbeat to batch lightweight checks and maintenance work.
-Use cron for precise time-based execution.
-
-### Heartbeat delivery contract
-- In interactive channels (Discord/Telegram/Slack/webchat), send user-facing messages with `message` tool.
-- `HEARTBEAT_OK` is for true no-op runs only.
-
 ## Cron Safety Contract
 - Never expose delivery internals (session keys/channel routing) in user-visible text.
-- If no user-visible output exists, return exactly `HEARTBEAT_OK`.
 - Use cron-creator workflow for cron create/edit/diagnostics.
 
 ## Known Persistent Learnings

@@ -5,7 +5,7 @@
 **Step 1 – Check weather**
 
 Check the weather for today in Walnut Creek / Acalanes Ridge.
-- If it rained today, reply with exactly `HEARTBEAT_OK` and nothing else. Do not continue.
+- If it rained today, reply with exactly `NO_REPLY` and nothing else. Do not continue.
 
 **Step 2 – Check chat history**
 
@@ -28,7 +28,7 @@ print(json.dumps(msgs))
 "
 ```
 
-Scan the returned messages for any mention that the front flowers or front deck plants have already been watered (e.g. "watered", "done", "flowers are good", etc.). If you find a clear indication they were watered, reply with exactly `HEARTBEAT_OK` and nothing else.
+Scan the returned messages for any mention that the front flowers or front deck plants have already been watered (e.g. "watered", "done", "flowers are good", etc.). If you find a clear indication they were watered, reply with exactly `NO_REPLY` and nothing else.
 
 **Step 3 – Compose nudge**
 

@@ -681,7 +681,7 @@ Use the component — it is the canonical version:
 ![[components/output-rule.md]]
 ```
 
-This enforces: no routing leakage, and every run (deliver or not) must end with `HEARTBEAT_OK` as the final output.
+This enforces: no routing leakage, and every run (deliver or not) must end with `NO_REPLY` as the final output when there is nothing to deliver.
 
 #### 2. Delivery section (place at the END of every cron prompt)
 
@@ -697,10 +697,10 @@ Deliver it as your final step by running this command yourself directly (do NOT 
 The <instruction> is an agent turn — frame it as context + directive, not as a direct user message.
 Example: "The weekly report is ready: <summary>. Present this to the user in a clear format."
 
-After the script completes, reply with exactly `HEARTBEAT_OK` and nothing else.
+After the script completes, reply with exactly `NO_REPLY` and nothing else.
 ```
 
-**Every run ends with `HEARTBEAT_OK`** — whether a message was delivered, there was nothing to do, or the job conditionally skipped delivery. The agent must never narrate what it checked, what it would have sent, or where. Just `HEARTBEAT_OK`.
+**Every run ends with `NO_REPLY`** when there is nothing to deliver — whether a message was delivered, there was nothing to do, or the job conditionally skipped delivery. The agent must never narrate what it checked, what it would have sent, or where. Just `NO_REPLY`.
 
 Note: there is **no `model` field** in the payload; it will use the agent’s default.
 

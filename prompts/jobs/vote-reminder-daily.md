@@ -1,6 +1,6 @@
 ## CRITICAL OUTPUT RULE — READ THIS FIRST
 
-Your output must NEVER contain ANY reference to delivery routing, session keys, channel names, phone numbers, thread targets, or how/where messages are sent. If you have nothing to deliver, reply with exactly `HEARTBEAT_OK` and nothing else.
+Your output must NEVER contain ANY reference to delivery routing, session keys, channel names, phone numbers, thread targets, or how/where messages are sent. If you have nothing to deliver, reply with exactly `NO_REPLY` and nothing else.
 
 ## Behavior
 

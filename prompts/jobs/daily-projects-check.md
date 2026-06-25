@@ -5,7 +5,7 @@
 1. Read `~/.openclaw/workspace/ACTIVE_PROJECTS.md`.
 2. Before composing your message, read any property lines on each `[in progress]` or `[on deck]` item (see the **Project Properties** key in the file) and use judgment to decide whether to include it — for example, omitting a project that has a future "don't ask until" date.
 3. Follow the **Agent Instructions** section at the top of that file to compose your message to Aaron using only the non-filtered items.
-4. Always proceed to Delivery — never exit with `HEARTBEAT_OK` before delivering.
+4. Always proceed to Delivery — never exit with `NO_REPLY` before delivering.
 
 ## Pending request
 

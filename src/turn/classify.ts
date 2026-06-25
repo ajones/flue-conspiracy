@@ -1,5 +1,6 @@
 import { getAccessToken } from '../auth/tokens.ts';
 import { createLogger } from '../log.ts';
+import { logModelCall } from '../model-observer.ts';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
 
 const log = createLogger('turn');
@@ -131,6 +132,12 @@ export async function classifyTurn(
 
     try {
       const token = await getAccessToken();
+      logModelCall({
+        model,
+        provider: 'openai-codex',
+        agent: agentName,
+        purpose: 'turn-classify',
+      });
       let raw = '';
       const response = await fetch('https://chatgpt.com/backend-api/codex/responses', {
         method: 'POST',

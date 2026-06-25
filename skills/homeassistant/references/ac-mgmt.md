@@ -198,6 +198,22 @@ curl -s -H "Authorization: Bearer $HOMEASSISTANT_TOKEN" \
     {entity_id, state, friendly_name: .attributes.friendly_name}]'
 ```
 
+### Climate + template AC sensors together
+
+When you need Nest thermostats and window-unit sensors in one pass, parenthesize each side of `or` (see SKILL.md — `|` binds tighter than `or`):
+
+```bash
+curl -s -H "Authorization: Bearer $HOMEASSISTANT_TOKEN" \
+  "$HOMEASSISTANT_URL/api/states" | \
+  jq '[.[] | select((.entity_id | startswith("climate.")) or (.entity_id | test("sensor\\.(living_room_ac|bedroom_ac|basement_ac)"))) | {
+    entity_id,
+    state,
+    friendly_name: .attributes.friendly_name,
+    hvac_action: .attributes.hvac_action,
+    current_temperature: .attributes.current_temperature
+  }]'
+```
+
 ---
 
 ## 6. Historical temperature analysis — bedroom bounds check

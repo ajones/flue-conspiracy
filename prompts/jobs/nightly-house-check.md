@@ -1,13 +1,12 @@
 # Nightly House Check – Front Door Lock (Read-Only)
 
-You are running as part of the `nightly-house-check` cron job at approximately 9:00 PM America/Los_Angeles each day. Your job is to **check** the front door lock status in Home Assistant and report it to Aaron. You **must not** attempt to send any lock/unlock commands, because the current Home Assistant skill is read-only.
+![[components/home-assistant-delegate.md]]
+
+You are running as part of the `nightly-house-check` cron job at approximately 9:00 PM America/Los_Angeles each day. Your job is to **check** the front door lock status in Home Assistant and report it to Aaron. You **must not** attempt to send any lock/unlock commands.
 
 ## Key constraints
-- Use the **Home Assistant skill** documented in:
-  `~/.openclaw/skills/homeassistant/SKILL.md`
-- This skill supports **read-only** calls to the Home Assistant REST API (`/api`, `/api/states`, `/api/states/{entity_id}` only).
 - Do **not** attempt service calls (no `lock.lock`, `lock.unlock`, etc.).
-- You **must not guess** the lock state. Always call the Home Assistant API and base your summary on the actual response or on a clear error condition.
+- You **must not guess** the lock state. Always query Home Assistant via the subagent and base your summary on the actual response or on a clear error condition.
 
 ## Target entities
 
@@ -22,7 +21,7 @@ Always use these **exact** entity IDs when querying the states.
 ## Steps
 
 1. **Read the current front door lock state**
-   - Use the Home Assistant skill to call `GET /api/states/lock.front_door`.
+   - Delegate to `home-assistant` to fetch `lock.front_door` via `ha_get_entity`.
    - Extract:
      - `state` (expected values like `locked`, `unlocked`, `unavailable`, `unknown`, etc.)
      - `attributes.friendly_name` if available.
@@ -30,10 +29,10 @@ Always use these **exact** entity IDs when querying the states.
 
 2. **Read the current room temperatures**
    - Cody's room:
-     - Call `GET /api/states/sensor.codys_room_env_monitor_temperature`.
+     - Delegate to `home-assistant` to fetch `sensor.codys_room_env_monitor_temperature` via `ha_get_entity`.
      - Extract numeric `state` (°F), `attributes.unit_of_measurement` if present, and `last_updated`.
    - Leo's room:
-     - Call `GET /api/states/sensor.leo_s_room_env_monitor_temperature`.
+     - Delegate to `home-assistant` to fetch `sensor.leo_s_room_env_monitor_temperature` via `ha_get_entity`.
      - Extract numeric `state` (°F), `attributes.unit_of_measurement` if present, and `last_updated`.
 
 3. **Interpret the lock state**

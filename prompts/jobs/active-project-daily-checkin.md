@@ -8,7 +8,7 @@
 4. **If there are zero eligible in-progress projects:** Find all projects marked `[not started]`.
    - For each `[not started]` project, check its update notes for any starting criteria (a start date, a condition like "after X", "wait until Y", etc.).
    - Only include a project if: it has no starting criteria, OR its starting criteria are met as of today.
-   - If no `[not started]` projects pass this filter, reply exactly `HEARTBEAT_OK` and stop.
+   - If no `[not started]` projects pass this filter, reply exactly `NO_REPLY` and stop.
    - Otherwise, compose a short, casual message listing the eligible not-started projects. For each one, suggest a **very small, concrete first step** Aaron could take to get it off the ground — something that takes 5–15 minutes at most. Keep the tone encouraging and practical, no fluff.
 
 ## Pending request

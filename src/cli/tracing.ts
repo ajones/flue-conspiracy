@@ -5,6 +5,7 @@ import { homedir } from 'node:os';
 import { createConnection } from 'node:net';
 import { spawn, execSync } from 'node:child_process';
 import { loadConfig } from '../config.ts';
+import { pruneTraceContent, readTraceContent, spillAttrKey } from '../trace-content.ts';
 
 const RAVEN_DIR = join(homedir(), '.raven');
 const BIN_DIR = join(RAVEN_DIR, 'bin');
@@ -114,15 +115,18 @@ service:
 }
 
 export async function isJaegerRunning(): Promise<boolean> {
-  if (!existsSync(PID_FILE)) return false;
-  const pid = parseInt(await readFile(PID_FILE, 'utf-8'), 10);
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    await unlink(PID_FILE).catch(() => {});
-    return false;
+  if (existsSync(PID_FILE)) {
+    const pid = parseInt(await readFile(PID_FILE, 'utf-8'), 10);
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      await unlink(PID_FILE).catch(() => {});
+    }
   }
+
+  // launchd-managed Jaeger (raven install) has no PID file
+  return isPortInUse(16686);
 }
 
 function isPortInUse(port: number): Promise<boolean> {
@@ -153,6 +157,7 @@ export async function startJaeger(): Promise<void> {
   }
 
   await writeJaegerConfig();
+  pruneTraceContent(getRetentionHours() / 24);
   clearStaleLock();
 
   await mkdir(LOG_DIR, { recursive: true });
@@ -541,7 +546,10 @@ async function show(input: string): Promise<void> {
   const parts: string[] = [];
 
   for (const span of spans) {
-    const attrs = span.tags.filter((t) => PROMPT_ATTRS.includes(t.key));
+    const tagMap: Record<string, string> = {};
+    for (const t of span.tags) tagMap[t.key] = t.value;
+
+    const attrs = PROMPT_ATTRS.filter((key) => key in tagMap);
     if (attrs.length === 0) continue;
 
     const rule = `${c.dim}${'─'.repeat(60)}${c.reset}`;
@@ -549,9 +557,18 @@ async function show(input: string): Promise<void> {
     parts.push(`${c.bold}${c.magenta}span${c.reset}: ${c.white}${span.operationName}${c.reset} ${c.dim}(${span.spanID})${c.reset}`);
     parts.push(rule);
 
-    for (const attr of attrs) {
-      parts.push(`\n  ${c.bold}${c.blue}[${attr.key}]${c.reset}\n`);
-      parts.push(formatValue(attr.value));
+    for (const key of attrs) {
+      const spillPath = tagMap[spillAttrKey(key)];
+      const spilled = spillPath ? readTraceContent(spillPath) : null;
+      const value = spilled ?? tagMap[key];
+      const spillNote = spilled !== null
+        ? ` ${c.dim}(full content from ${spillPath})${c.reset}`
+        : spillPath
+          ? ` ${c.dim}(spill file missing: ${spillPath})${c.reset}`
+          : '';
+
+      parts.push(`\n  ${c.bold}${c.blue}[${key}]${c.reset}${spillNote}\n`);
+      parts.push(formatValue(value));
     }
   }
 

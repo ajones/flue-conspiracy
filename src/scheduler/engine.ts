@@ -13,6 +13,12 @@ import { sendToConversation } from '../deliver.ts';
 const log = createLogger('scheduler');
 const tracer = trace.getTracer('raven');
 
+const SILENT_JOB_REPLIES = new Set(['NO_REPLY', 'HEARTBEAT_OK']);
+
+function isSilentJobReply(text: string): boolean {
+  return SILENT_JOB_REPLIES.has(text.trim());
+}
+
 export interface SchedulerConfig {
   maxConcurrent: number;
   runRetentionDays: number;
@@ -293,7 +299,7 @@ export class Scheduler {
           'UPDATE raven_job_runs SET assembled_prompt = ?, dispatch_id = ? WHERE id = ?'
         ).run(assembled, jobResult.dispatchId ?? null, runId);
 
-        if (jobResult.text) {
+        if (jobResult.text && !isSilentJobReply(jobResult.text)) {
           await tracer.startActiveSpan('job.deliver', {
             attributes: {
               'raven.job.target': job.target,

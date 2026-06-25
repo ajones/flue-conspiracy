@@ -10,7 +10,19 @@ import { getSchedulerConfig, getMemoryConfig } from './config.ts';
 import { initMemory } from './memory/index.ts';
 import { registerMemoryObserver } from './memory/observer.ts';
 import { registerToolObserver } from './tool-observer.ts';
+import { registerModelObserver } from './model-observer.ts';
 import { log } from './log.ts';
+
+process.on('unhandledRejection', (reason) => {
+  log.error('Unhandled rejection', {
+    error: reason instanceof Error ? reason.message : String(reason),
+    stack: reason instanceof Error ? reason.stack : undefined,
+  });
+});
+
+process.on('uncaughtException', (err) => {
+  log.error('Uncaught exception', { error: err.message, stack: err.stack });
+});
 
 const token = await getAccessToken();
 registerProvider('openai-codex', { apiKey: token });
@@ -25,6 +37,7 @@ if (memConfig.enabled !== false) {
 }
 
 registerToolObserver();
+registerModelObserver();
 
 const scheduler = new Scheduler(getSchedulerConfig());
 const app = new Hono();

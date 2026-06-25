@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { getGatewayUrl } from '../config.ts';
+import { isClearCommand } from '../session-clear.ts';
 
 const BASE_URL = getGatewayUrl();
 
@@ -156,11 +157,11 @@ class Tui {
       const text = this.input.trim();
       if (!text) return;
       if (text === '/quit' || text === '/exit' || text === '/q') return this.exit();
-      if (text === '/clear') {
-        this.messages = [];
+      if (isClearCommand(text)) {
         this.input = '';
         this.cursor = 0;
-        return this.render();
+        void this.clearSession();
+        return;
       }
       this.input = '';
       this.cursor = 0;
@@ -203,6 +204,31 @@ class Tui {
 
     this.input = this.input.slice(0, this.cursor) + s + this.input.slice(this.cursor);
     this.cursor += s.length;
+    this.render();
+  }
+
+  private async clearSession() {
+    this.messages = [];
+    this.render();
+
+    try {
+      const url = `${BASE_URL}/agents/${this.agent}/${this.instanceId}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: '/clear' }),
+      });
+
+      if (res.ok) {
+        this.messages.push({ role: 'assistant', content: 'Conversation cleared.' });
+      } else {
+        const body = await res.text();
+        this.messages.push({ role: 'assistant', content: `Failed to clear session (${res.status}): ${body}` });
+      }
+    } catch {
+      this.messages.push({ role: 'assistant', content: `Failed to clear session — gateway not reachable at ${BASE_URL}` });
+    }
+
     this.render();
   }
 

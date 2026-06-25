@@ -2,6 +2,7 @@ import { getAccessToken } from '../auth/tokens.ts';
 import { isSkillEnabled } from '../config.ts';
 import { loadSkills, type DiscoveredSkill } from './discover.ts';
 import { createLogger } from '../log.ts';
+import { logModelCall } from '../model-observer.ts';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
 
 const log = createLogger('skills');
@@ -10,6 +11,7 @@ const tracer = trace.getTracer('raven');
 export interface ClassifierOptions {
   maxSkills?: number;
   model?: string;
+  agentName?: string;
 }
 
 export interface ClassifiedSkills {
@@ -51,7 +53,7 @@ export async function classifySkills(
   message: string,
   options: ClassifierOptions = {},
 ): Promise<ClassifiedSkills> {
-  const { maxSkills = 3, model = 'gpt-5.4-mini' } = options;
+  const { maxSkills = 3, model = 'gpt-5.4-mini', agentName } = options;
   const skills = loadSkills();
 
   if (skills.size === 0) {
@@ -59,10 +61,12 @@ export async function classifySkills(
     return { enabled: [], disabled: [], reasoning: 'no skills available' };
   }
 
-  const catalog = [...skills.values()].map((s) => ({
-    name: s.name,
-    description: s.description,
-  }));
+  const catalog = [...skills.values()]
+    .filter((s) => isSkillEnabled(s.name))
+    .map((s) => ({
+      name: s.name,
+      description: s.description,
+    }));
 
   return await tracer.startActiveSpan('skills.classify', async (span) => {
     span.setAttribute('raven.skills.model', model);
@@ -71,6 +75,12 @@ export async function classifySkills(
 
     try {
       const token = await getAccessToken();
+      logModelCall({
+        model,
+        provider: 'openai-codex',
+        agent: agentName,
+        purpose: 'skills-classify',
+      });
       let raw = '';
       const response = await fetch('https://chatgpt.com/backend-api/codex/responses', {
         method: 'POST',

@@ -10,7 +10,7 @@ Follow this order:
 3. Review `BILL_TRENDS.md` to see whether the trend is already captured.
 4. Only call something a new trend if it is strong and defensible: supported by at least 3 observations across at least 2 different days, or by a clear escalation pattern that is obvious from multiple examples. Single incidents, one-off quirks, and vague themes do not count.
 5. If the pattern is not crisp enough to state in one plain sentence with concrete evidence, do not log it. Prefer false negatives over false positives.
-6. If the evidence is thin, overlapping, or could be explained by one isolated event, output exactly `HEARTBEAT_OK`.
+6. If the evidence is thin, overlapping, or could be explained by one isolated event, output exactly `NO_REPLY`.
 6. If a genuinely new trend is found, update `BILL_TRENDS.md` using the bill skill and then prepare a very brief summary.
 
 ## Output rules

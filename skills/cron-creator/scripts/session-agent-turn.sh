@@ -39,8 +39,8 @@ if [[ -z "$PAYLOAD" ]]; then
   exit 1
 fi
 
-if [[ "$PAYLOAD" == "HEARTBEAT_OK" ]]; then
-  log_line "dropped HEARTBEAT_OK payload (session_key=$SESSION_KEY) — cron job replied with ack token instead of content"
+if [[ "$PAYLOAD" == "NO_REPLY" || "$PAYLOAD" == "HEARTBEAT_OK" ]]; then
+  log_line "dropped silent ack payload (session_key=$SESSION_KEY payload=$PAYLOAD) — cron job replied with ack token instead of content"
   exit 0
 fi
 

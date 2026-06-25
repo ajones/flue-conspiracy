@@ -1,10 +1,10 @@
 ![[components/output-rule.md]]
 
+![[components/home-assistant-delegate.md]]
+
 ## Behavior
 
-Load `~/.openclaw/skills/homeassistant/SKILL.md` and `~/.openclaw/skills/homeassistant/references/ac-mgmt.md`.
-
-Check the state of these AC units:
+Check the state of these AC units — delegate to `home-assistant` and have it call `ha_get_entity` for each:
 - `climate.ash_office`
 - `climate.basement_nest`
 - `climate.main_floor_nest`
@@ -47,10 +47,10 @@ Question asked: Do you want me to turn off the AC units?
 Active entities: [comma-separated list of entity_ids that are on, e.g. climate.main_floor,climate.bedroom]
 
 When Aaron or Ashley confirms they want units off (all or a named subset):
-- Load `~/.openclaw/skills/homeassistant/SKILL.md` and `~/.openclaw/skills/homeassistant/references/ac-mgmt.md`
+- Delegate to `home-assistant` to turn off the requested units
 - If they named specific units, match those to the active entities list; only act on the ones they specified
 - If they said yes / all, act on every entity in the active list
-- For each targeted entity, call POST /api/services/climate/set_hvac_mode with hvac_mode "off"
+- For each targeted entity, have the subagent call `ha_call_service` with domain `climate`, service `set_hvac_mode`, and `hvac_mode` `off`
 - After each call, fetch the entity state to verify it is now "off"
 - Report results: for each entity that succeeded say "✅ [friendly name] off"; for each that failed say "⚠️ Couldn't turn off [friendly name] — you'll need to do that manually"
 - Remove this block from PENDING_AGENT_REQUESTS.md after processing

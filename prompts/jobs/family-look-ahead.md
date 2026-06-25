@@ -28,7 +28,9 @@ Ask the weather-man agent for today's forecast for Walnut Creek, CA to determine
 
 ### Cat box
 
-Use `ha_get_entity` to check these Home Assistant entities:
+![[components/home-assistant-delegate.md]]
+
+Delegate to `home-assistant` and have it call `ha_get_entity` for:
 - `binary_sensor.cat_box_time_to_clean`
 - If state is "on", also check `input_datetime.cat_box_last_clean_time` and compute elapsed time as a human-friendly duration in America/Los_Angeles.
 - If state is "off" or the check fails, skip the cat box section entirely.
