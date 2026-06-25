@@ -48,8 +48,7 @@ export function createAgentSandbox(agentName: string): AgentSandbox {
         network: { dangerouslyAllowFullInternetAccess: true },
       });
       await b.exec('shopt -s dotglob');
-      const sandboxFiles = await fs.readdir(SANDBOX_WORKSPACE);
-      log.info('Sandbox initialized', { agentName, sandboxFiles });
+      log.info('Sandbox initialized', { agentName });
       const findResult = await b.exec(`find ${SANDBOX_WORKSPACE} -maxdepth 1 -type f -name "*"`);
       log.info('Sandbox find result', { agentName, files: findResult.stdout.trim().split('\n').filter(Boolean) });
       return b;
@@ -63,4 +62,14 @@ export function createAgentSandbox(agentName: string): AgentSandbox {
 export function sandboxPathHint(sandboxWorkspacePath: string | undefined): string {
   if (!sandboxWorkspacePath) return '';
   return `\n\nYour workspace folder is: ${sandboxWorkspacePath}\nSkills are mounted at: ${SANDBOX_SKILLS}\nUse these paths when skills reference credential files, scripts, or other workspace resources.`;
+}
+
+export function sandboxSkillMdPath(hostSkillMdPath: string): string {
+  const projectRoot = findProjectRoot();
+  const skillsRoot = resolve(projectRoot, 'skills');
+  if (hostSkillMdPath.startsWith(skillsRoot)) {
+    const relative = hostSkillMdPath.slice(skillsRoot.length).replace(/^\/+/, '');
+    return relative ? `${SANDBOX_SKILLS}/${relative}` : SANDBOX_SKILLS;
+  }
+  return hostSkillMdPath;
 }
