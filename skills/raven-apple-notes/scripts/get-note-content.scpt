@@ -3,10 +3,6 @@
 --   Full note:  osascript get-note-content.scpt <note-id-or-name>
 --   One line:   osascript get-note-content.scpt <note-id-or-name> <line-number>
 --   Line range: osascript get-note-content.scpt <note-id-or-name> <start-end>
--- Examples:
---   osascript get-note-content.scpt "My Note"
---   osascript get-note-content.scpt "My Note" 5
---   osascript get-note-content.scpt "My Note" "3-7"
 
 on run argv
 	if (count of argv) < 1 then
@@ -18,41 +14,34 @@ on run argv
 	set rangeStart to 0
 	set rangeEnd to 0
 
-	-- Optional second arg: line number or range "start-end"
 	if (count of argv) ≥ 2 then
 		set lineSpec to item 2 of argv
-		set useRange to true
 
 		if lineSpec contains "-" then
 			try
 				set dashPos to offset of "-" in lineSpec
 				set rangeStart to (text 1 thru (dashPos - 1) of lineSpec) as integer
 				set rangeEnd to (text (dashPos + 1) thru -1 of lineSpec) as integer
-				if rangeStart < 1 or rangeEnd < rangeStart then set useRange to false
+				if rangeStart ≥ 1 and rangeEnd ≥ rangeStart then set useRange to true
 			end try
 		else
 			try
 				set rangeStart to lineSpec as integer
 				set rangeEnd to rangeStart
-				if rangeStart < 1 then set useRange to false
+				if rangeStart ≥ 1 then set useRange to true
 			end try
+		end if
+
+		if not useRange then
+			repeat with i from 2 to count of argv
+				set targetIdOrName to targetIdOrName & " " & (item i of argv)
+			end repeat
 		end if
 	end if
 
 	tell application "Notes"
-		set foundNote to missing value
-		repeat with acc in accounts
-			repeat with fol in folders of acc
-				repeat with n in notes of fol
-					if (id of n as text) is targetIdOrName or (name of n) is targetIdOrName then
-						set foundNote to n
-						exit repeat
-					end if
-				end repeat
-				if foundNote is not missing value then exit repeat
-			end repeat
-			if foundNote is not missing value then exit repeat
-		end repeat
+		launch
+		set foundNote to my findNote(targetIdOrName)
 
 		if foundNote is missing value then
 			return "Error: No note found with ID or name: " & targetIdOrName
@@ -82,3 +71,38 @@ on run argv
 		return output
 	end tell
 end run
+
+on findNote(targetIdOrName)
+	tell application "Notes"
+		set preferredFolders to {"Shared with Raven", "Shared With Raven"}
+
+		repeat with folderName in preferredFolders
+			repeat with acc in accounts
+				try
+					set fol to folder folderName of acc
+					set matches to every note of fol whose name is targetIdOrName
+					if (count of matches) > 0 then return item 1 of matches
+				end try
+			end repeat
+		end repeat
+
+		repeat with acc in accounts
+			repeat with fol in folders of acc
+				try
+					set matches to every note of fol whose name is targetIdOrName
+					if (count of matches) > 0 then return item 1 of matches
+				end try
+			end repeat
+		end repeat
+
+		repeat with acc in accounts
+			repeat with fol in folders of acc
+				repeat with n in notes of fol
+					if (id of n as text) is targetIdOrName then return n
+				end repeat
+			end repeat
+		end repeat
+
+		return missing value
+	end tell
+end findNote

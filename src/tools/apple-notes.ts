@@ -2,20 +2,37 @@ import { defineTool } from '@flue/runtime';
 import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { createLogger } from '../log.ts';
+import { findProjectRoot } from '../workspace/index.ts';
 
 const log = createLogger('apple-notes');
 
-const SCRIPTS_DIR = join(process.cwd(), 'skills', 'raven-apple-notes', 'scripts');
+const SCRIPTS_DIR = join(findProjectRoot(), 'skills', 'raven-apple-notes', 'scripts');
+const SCRIPT_TIMEOUT_MS = 120_000;
+
+function formatScriptError(script: string, err: { message: string; killed?: boolean; signal?: string }, stdout: string, stderr: string): string {
+  const detail = [stderr.trim(), stdout.trim()].filter(Boolean).join(' | ');
+  if (err.killed && err.signal === 'SIGTERM') {
+    const base = `AppleScript timed out after ${SCRIPT_TIMEOUT_MS / 1000}s (${script})`;
+    return detail ? `${base}: ${detail}` : `${base}. Notes may be slow or blocked — check Automation permission for this process in System Settings → Privacy & Security → Automation.`;
+  }
+  const base = `AppleScript error (${script}): ${err.message}`;
+  return detail ? `${base} — ${detail}` : base;
+}
 
 function runScript(script: string, args: string[]): Promise<string> {
   const scriptPath = join(SCRIPTS_DIR, script);
   return new Promise((resolve, reject) => {
-    execFile('osascript', [scriptPath, ...args], { timeout: 30_000 }, (err, stdout, stderr) => {
+    execFile('osascript', [scriptPath, ...args], { timeout: SCRIPT_TIMEOUT_MS }, (err, stdout, stderr) => {
       if (err) {
-        log.error('AppleScript failed', { script, error: err.message, stderr });
-        return reject(new Error(`AppleScript error (${script}): ${err.message}`));
+        const message = formatScriptError(script, err, stdout, stderr);
+        log.error('AppleScript failed', { script, error: err.message, stderr, stdout, killed: err.killed });
+        return reject(new Error(message));
       }
-      resolve(stdout.trim());
+      const output = stdout.trim();
+      if (output.startsWith('Error:')) {
+        return reject(new Error(output));
+      }
+      resolve(output);
     });
   });
 }
