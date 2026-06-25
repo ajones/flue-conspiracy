@@ -6,7 +6,80 @@ import { createLogger } from '../log.js';
 const log = createLogger('workspace');
 
 const DEFAULT_DIR = '.workspace';
-const SYSTEM_FILES = ['IDENTITY.md', 'AGENTS.md', 'SOUL.md', 'USER.md', 'TOOLS.md'] as const;
+export const SYSTEM_FILES = ['IDENTITY.md', 'AGENTS.md', 'SOUL.md', 'USER.md', 'TOOLS.md'] as const;
+
+const DEFAULT_TZ = 'America/Los_Angeles';
+
+export interface WorkspaceContextOptions {
+  includeLongTermMemory?: boolean;
+  tz?: string;
+}
+
+export interface LoadedWorkspaceFile {
+  path: string;
+  content: string;
+}
+
+export interface WorkspaceContextResult {
+  loaded: LoadedWorkspaceFile[];
+  missing: string[];
+}
+
+function localDateInTz(daysAgo: number, tz: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+  }).formatToParts(new Date());
+  const y = Number(parts.find((p) => p.type === 'year')!.value);
+  const m = Number(parts.find((p) => p.type === 'month')!.value);
+  const d = Number(parts.find((p) => p.type === 'day')!.value);
+  return new Date(Date.UTC(y, m - 1, d - daysAgo)).toISOString().slice(0, 10);
+}
+
+function readIfExists(workspacePath: string, relPath: string, loaded: LoadedWorkspaceFile[], missing: string[]): void {
+  const filePath = join(workspacePath, relPath);
+  if (existsSync(filePath)) {
+    loaded.push({ path: relPath, content: readFileSync(filePath, 'utf8') });
+  } else {
+    missing.push(relPath);
+  }
+}
+
+export function loadWorkspaceContext(workspacePath: string, options: WorkspaceContextOptions = {}): WorkspaceContextResult {
+  const tz = options.tz ?? DEFAULT_TZ;
+  const loaded: LoadedWorkspaceFile[] = [];
+  const missing: string[] = [];
+
+  for (const filename of SYSTEM_FILES) {
+    readIfExists(workspacePath, filename, loaded, missing);
+  }
+
+  for (let daysAgo = 0; daysAgo < 2; daysAgo++) {
+    readIfExists(workspacePath, `memory/${localDateInTz(daysAgo, tz)}.md`, loaded, missing);
+  }
+
+  if (options.includeLongTermMemory) {
+    readIfExists(workspacePath, 'MEMORY.md', loaded, missing);
+  }
+
+  return { loaded, missing };
+}
+
+export function formatWorkspaceContext(result: WorkspaceContextResult): string {
+  if (result.loaded.length === 0) {
+    const skipped = result.missing.length > 0 ? ` Skipped (not found): ${result.missing.join(', ')}.` : '';
+    return `_No workspace context files found.${skipped}_`;
+  }
+
+  const sections = result.loaded.map(({ path, content }) => `# ${path}\n\n${content}`);
+  let out = sections.join('\n\n---\n\n');
+  if (result.missing.length > 0) {
+    out += `\n\n---\n\n_Skipped (not found): ${result.missing.join(', ')}_`;
+  }
+  return out;
+}
 
 export function findProjectRoot(): string {
   let dir = import.meta.dirname;
@@ -50,15 +123,9 @@ export function listWorkspaceContents(dir: string): string[] {
 }
 
 export function loadWorkspaceSystemContext(workspacePath: string): string | null {
-  const parts: string[] = [];
-  for (const filename of SYSTEM_FILES) {
-    const filePath = join(workspacePath, filename);
-    if (existsSync(filePath)) {
-      parts.push(readFileSync(filePath, 'utf8'));
-    }
-  }
-  if (parts.length === 0) return null;
-  return parts.join('\n\n---\n\n');
+  const result = loadWorkspaceContext(workspacePath);
+  if (result.loaded.length === 0) return null;
+  return result.loaded.map(({ content }) => content).join('\n\n---\n\n');
 }
 
 export function withWorkspaceContext(workspacePath: string | undefined, operations: string): string {

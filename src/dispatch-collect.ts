@@ -9,6 +9,35 @@ const log = createLogger('dispatch');
 
 const DEFAULT_TIMEOUT_MS = 300_000;
 
+function matchesDispatch(
+  event: { dispatchId?: string; instanceId?: string },
+  dispatchId: string,
+  instanceId: string | undefined,
+): boolean {
+  if (event.dispatchId !== dispatchId) return false;
+  if (instanceId !== undefined && event.instanceId !== instanceId) return false;
+  return true;
+}
+
+function extractAssistantText(messages: unknown): string {
+  if (!Array.isArray(messages)) return '';
+  return messages
+    .filter((m: any) => m.role === 'assistant')
+    .flatMap((m: any) => Array.isArray(m.content) ? m.content : [])
+    .filter((c: any) => c.type === 'text')
+    .map((c: any) => c.text)
+    .filter(Boolean)
+    .join('\n');
+}
+
+function extractOperationText(result: unknown): string {
+  if (result && typeof result === 'object' && 'text' in result) {
+    const text = (result as { text?: unknown }).text;
+    if (typeof text === 'string') return text;
+  }
+  return '';
+}
+
 export interface CollectedReply {
   dispatchId: string | undefined;
   text: string;
@@ -49,35 +78,12 @@ export function dispatchAndCollect(
       if (opts.parentContext && receipt.dispatchId) {
         trackDispatchContext(receipt.dispatchId, opts.parentContext);
       }
-      unsub = observe((event) => {
-        if (event.dispatchId !== receipt.dispatchId) return;
-        if (instanceId !== undefined && (event as any).instanceId !== instanceId) return;
+      let rootPromptOperationId: string | undefined;
+      let latestAgentEndText = '';
 
-        if (event.type === 'operation' && (event as any).isError) {
-          clearTimeout(timeout);
-          unsub?.();
-          const errObj = (event as any).error;
-          const msg = typeof errObj?.message === 'string'
-            ? errObj.message
-            : typeof errObj === 'string'
-              ? errObj
-              : 'Agent operation failed';
-          log.error('Agent operation failed', { agent, instanceId, dispatchId: receipt.dispatchId, error: msg });
-          reject(new Error(msg));
-          return;
-        }
-
-        if (event.type !== 'agent_end') return;
-
+      const finish = (rawText: string) => {
         clearTimeout(timeout);
         unsub?.();
-        const rawText = event.messages
-          .filter((m: any) => m.role === 'assistant')
-          .flatMap((m: any) => Array.isArray(m.content) ? m.content : [])
-          .filter((c: any) => c.type === 'text')
-          .map((c: any) => c.text)
-          .filter(Boolean)
-          .join('\n');
         const { text, imagePaths } = parseReplyAttachments(rawText);
         log.info('Dispatch complete', {
           agent,
@@ -87,6 +93,41 @@ export function dispatchAndCollect(
           imageCount: imagePaths.length,
         });
         resolve({ dispatchId: receipt.dispatchId, text, imagePaths });
+      };
+
+      unsub = observe((event) => {
+        if (!matchesDispatch(event, receipt.dispatchId, instanceId)) return;
+
+        if (event.type === 'operation_start' && event.operationKind === 'prompt' && !rootPromptOperationId) {
+          rootPromptOperationId = event.operationId;
+          return;
+        }
+
+        if (event.type === 'operation' && event.operationKind === 'prompt') {
+          if (event.operationId !== rootPromptOperationId) return;
+
+          if (event.isError) {
+            clearTimeout(timeout);
+            unsub?.();
+            const errObj = event.error;
+            const msg = typeof errObj === 'object' && errObj && 'message' in errObj && typeof errObj.message === 'string'
+              ? errObj.message
+              : typeof errObj === 'string'
+                ? errObj
+                : 'Agent operation failed';
+            log.error('Agent operation failed', { agent, instanceId, dispatchId: receipt.dispatchId, error: msg });
+            reject(new Error(msg));
+            return;
+          }
+
+          const opText = extractOperationText(event.result);
+          finish(opText || latestAgentEndText);
+          return;
+        }
+
+        if (event.type === 'agent_end') {
+          latestAgentEndText = extractAssistantText(event.messages);
+        }
       });
     }).catch((err) => {
       clearTimeout(timeout);

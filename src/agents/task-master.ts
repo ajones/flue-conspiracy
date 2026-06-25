@@ -1,6 +1,7 @@
 import { createAgent, defineAgentProfile } from '@flue/runtime';
 import { createContextGatheringRoute } from '../agent-route.ts';
 import { taskTools } from '../tools/tasks.ts';
+import { workspaceContextTools } from '../tools/workspace-context.ts';
 import { TASKS_FILENAME } from '../tasks/store.ts';
 import { withWorkspaceContext } from '../workspace/index.ts';
 import { createAgentSandbox, sandboxPathHint } from '../sandbox.ts';
@@ -35,6 +36,7 @@ If \`tasks.json\` does not exist yet, tools create it on first write.
 
 ## Tools
 
+- workspace_load_context — load IDENTITY, AGENTS, SOUL, USER, TOOLS, and recent memory in one call (session start)
 - tasks_list_lists — discover lists
 - tasks_list — read tasks with optional filters
 - tasks_add — create tasks (default list: "default")
@@ -55,7 +57,7 @@ export const taskMasterProfile = defineAgentProfile({
   name: 'task-master',
   description:
     'Task list manager. Adds, updates, and organizes tasks in workspace files; reviews deadlines and nudges on overdue or in-progress work.',
-  tools: taskTools,
+  tools: [...workspaceContextTools, ...taskTools],
   instructions: OPERATIONS,
 });
 
@@ -65,13 +67,13 @@ export default createAgent(() => {
   const profile = defineAgentProfile({
     name: 'task-master',
     instructions: withWorkspaceContext(hostWorkspacePath, OPERATIONS + sandboxPathHint(hostWorkspacePath)),
-    tools: taskTools,
+    tools: [...workspaceContextTools, ...taskTools],
   });
 
   return {
     profile,
     model: 'openai-codex/gpt-5.4-mini',
-    tools: taskTools,
+    tools: [...workspaceContextTools, ...taskTools],
     cwd,
     sandbox,
   };

@@ -56,7 +56,7 @@ export function sandboxPathHint(hostWorkspacePath: string | undefined): string {
     }
   }
   lines.push(
-    'Workspace files (USER.md, SOUL.md, memory/*.md, etc.) are optional — read them if present; skip missing files without error.',
+    'At session start, call workspace_load_context once with your workspace path instead of reading USER.md, SOUL.md, etc. individually.',
   );
   return lines.join('\n');
 }

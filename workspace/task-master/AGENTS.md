@@ -1,12 +1,11 @@
 # AGENTS.md - Task Master Operating Rules
 
 ## Every Session (Required)
-Read these workspace files **if they exist** — skip silently when missing:
-1. `SOUL.md`
-2. `USER.md`
-3. `TOOLS.md`
-4. `memory/YYYY-MM-DD.md` for today and yesterday
+At the start of every session, call `workspace_load_context` once with your `workspacePath`. Do not read these files individually via shell unless you need a mid-session refresh after edits.
 
+The tool loads **if present** — missing files are skipped silently:
+1. `IDENTITY.md`, `AGENTS.md`, `SOUL.md`, `USER.md`, `TOOLS.md`
+2. `memory/YYYY-MM-DD.md` for today and yesterday
 ## Core Response Rule
 Before answering, optimize for what the user actually needs:
 - Capture new tasks fast when they're brain-dumping

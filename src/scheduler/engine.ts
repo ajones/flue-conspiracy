@@ -5,7 +5,7 @@ import * as db from './db.ts';
 import { runScripts, assemblePrompt } from './scripts.ts';
 import type { JobRow } from './types.ts';
 import { createLogger } from '../log.ts';
-import { trackAgentInstance, getAgentName } from '../agent-names.ts';
+import { trackAgentInstance } from '../agent-names.ts';
 import { gatherContext, spreadContext } from '../context.ts';
 import { dispatchAndCollect } from '../dispatch-collect.ts';
 import { sendToConversation } from '../deliver.ts';
@@ -17,6 +17,23 @@ const SILENT_JOB_REPLIES = new Set(['NO_REPLY', 'HEARTBEAT_OK']);
 
 function isSilentJobReply(text: string): boolean {
   return SILENT_JOB_REPLIES.has(text.trim());
+}
+
+function buildDeliveryMessage(resultPreference: string, result: string): string {
+  return [
+    'Deliver the scheduled job result below. This is a delivery-only step.',
+    'Do not delegate to subagents or re-fetch any data.',
+    'Only use messaging tools for delivery; do not use other tools.',
+    'Apply the delivery instruction to the job result and return only the final user-facing text.',
+    '',
+    '<delivery-instruction>',
+    resultPreference,
+    '</delivery-instruction>',
+    '',
+    '<job-result>',
+    result,
+    '</job-result>',
+  ].join('\n');
 }
 
 export interface SchedulerConfig {
@@ -308,20 +325,20 @@ export class Scheduler {
             },
           }, async (deliverSpan) => {
             try {
-              const targetAgent = getAgentName(job.target);
-              if (!targetAgent) {
-                throw new Error(`No agent bound to target conversation: ${job.target}`);
-              }
-              deliverSpan.setAttribute('raven.job.target_agent', targetAgent);
+              const deliveryInstanceId = `scheduler:deliver:${job.name}:${runId}`;
+              trackAgentInstance(deliveryInstanceId, job.agent);
+              deliverSpan.setAttribute('raven.job.delivery_agent', job.agent);
 
-              const deliveryMessage = `${job.resultPreference}\n\n${jobResult.text}`;
               const deliveryReply = await dispatchAndCollect({
-                agent: targetAgent,
-                id: job.target,
+                agent: job.agent,
+                id: deliveryInstanceId,
                 input: {
                   type: 'scheduler.delivery',
                   jobName: job.name,
-                  message: deliveryMessage,
+                  target: job.target,
+                  instruction: job.resultPreference,
+                  result: jobResult.text,
+                  message: buildDeliveryMessage(job.resultPreference, jobResult.text),
                 },
               }, { parentContext: otelContext.active() });
 

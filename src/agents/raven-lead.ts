@@ -5,12 +5,15 @@ import { homeAssistantProfile } from './home-assistant.ts';
 import { taskMasterProfile } from './task-master.ts';
 import { appleNotesTools } from '../tools/apple-notes.ts';
 import { icalReaderTools } from '../tools/ical-reader.ts';
+import { workspaceContextTools } from '../tools/workspace-context.ts';
 import { withWorkspaceContext } from '../workspace/index.ts';
 import { createAgentSandbox, sandboxPathHint } from '../sandbox.ts';
 
 export const route = createContextGatheringRoute('raven-lead');
 
-const OPERATIONS = `Delegate to the right subagent based on what the user needs:
+const OPERATIONS = `At session start, call workspace_load_context once with your workspace path before doing anything else.
+
+Delegate to the right subagent based on what the user needs:
 - 'weather-man' for anything weather-related — current conditions, forecasts, highs/lows, weekly outlooks
 - 'task-master' for task lists — adding, updating, organizing tasks, reviewing deadlines, and nudging on overdue or in-progress work. Always include your Working directory as the workspace path.
 - Use the apple_notes_* tools directly for anything involving Apple Notes — reading, creating, updating, listing, or searching notes
@@ -53,7 +56,7 @@ export default createAgent(() => {
   return {
     profile: ravenLead,
     model: 'openai-codex/gpt-5.4-mini',
-    tools: [...appleNotesTools, ...icalReaderTools],
+    tools: [...workspaceContextTools, ...appleNotesTools, ...icalReaderTools],
     cwd,
     sandbox,
   };

@@ -1,16 +1,12 @@
 # AGENTS.md - Workspace Operating Rules
 
 ## Every Session (Required)
-Read these workspace files **if they exist** — skip silently when missing (do not treat ENOENT as an error):
-1. `SOUL.md`
-2. `USER.md`
-3. `TOOLS.md`
-4. `memory/YYYY-MM-DD.md` for today and yesterday
-5. In main/direct session only: `MEMORY.md`
+At the start of every session, call `workspace_load_context` once with your workspace path (`include_long_term_memory: true` in main/direct sessions only). Do not read these files individually via shell unless you need a mid-session refresh after edits.
 
-When reading via shell, use paths under your workspace folder (e.g. `/home/user/workspace/USER.md`) and append `|| true` so a missing file does not fail the command:
-`cat /home/user/workspace/USER.md 2>/dev/null || true`
-
+The tool loads **if present** — missing files are skipped silently:
+1. `IDENTITY.md`, `AGENTS.md`, `SOUL.md`, `USER.md`, `TOOLS.md`
+2. `memory/YYYY-MM-DD.md` for today and yesterday
+3. `MEMORY.md` when `include_long_term_memory` is true (main/direct session only)
 
 ## Core Response Rule
 Before answering, optimize for what Aaron actually needs (not just literal wording):
