@@ -5,12 +5,13 @@ import { existsSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { getWorkspaceConfig } from './config.ts';
 import { findProjectRoot, resolveAgentWorkspace } from './workspace/index.ts';
+import { buildHostCliCommands, installCliCommandStubs } from './sandbox/host-cli.ts';
+import { SANDBOX_SKILLS, SANDBOX_WORKSPACE } from './sandbox/paths.ts';
 import { createLogger } from './log.ts';
 
 const log = createLogger('sandbox');
 
-export const SANDBOX_WORKSPACE = '/home/user/workspace';
-export const SANDBOX_SKILLS = '/home/user/skills';
+export { SANDBOX_SKILLS, SANDBOX_WORKSPACE } from './sandbox/paths.ts';
 
 export interface AgentSandbox {
   sandbox: SandboxFactory;
@@ -38,19 +39,27 @@ export function createAgentSandbox(agentName: string): AgentSandbox {
   }
   const skillsRoot = resolve(projectRoot, 'skills');
   if (existsSync(skillsRoot)) {
-    fs.mount(SANDBOX_SKILLS, new OverlayFs({ root: skillsRoot }));
+    // MountableFs passes paths relative to the mount point; mountPoint must be '/'.
+    fs.mount(SANDBOX_SKILLS, new OverlayFs({ root: skillsRoot, mountPoint: '/' }));
   }
+
+  const hostCliContext = {
+    hostWorkspacePath,
+    skillsRoot,
+    projectRoot,
+  };
+  const hostCliCommands = buildHostCliCommands(skillsRoot, hostCliContext);
 
   return {
     sandbox: bash(async () => {
+      await installCliCommandStubs(fs, hostCliCommands.map((c) => c.name));
       const b = new Bash({
         fs,
         network: { dangerouslyAllowFullInternetAccess: true },
+        customCommands: hostCliCommands,
       });
       await b.exec('shopt -s dotglob');
       log.info('Sandbox initialized', { agentName });
-      const findResult = await b.exec(`find ${SANDBOX_WORKSPACE} -maxdepth 1 -type f -name "*"`);
-      log.info('Sandbox find result', { agentName, files: findResult.stdout.trim().split('\n').filter(Boolean) });
       return b;
     }),
     cwd: sandboxWorkspacePath ?? '/home/user',
@@ -65,11 +74,21 @@ export function sandboxPathHint(sandboxWorkspacePath: string | undefined): strin
 }
 
 export function sandboxSkillMdPath(hostSkillMdPath: string): string {
-  const projectRoot = findProjectRoot();
-  const skillsRoot = resolve(projectRoot, 'skills');
-  if (hostSkillMdPath.startsWith(skillsRoot)) {
-    const relative = hostSkillMdPath.slice(skillsRoot.length).replace(/^\/+/, '');
+  const skillsRoot = resolve(findProjectRoot(), 'skills');
+  const normalized = resolve(hostSkillMdPath);
+  if (normalized === skillsRoot || normalized.startsWith(`${skillsRoot}/`)) {
+    const relative = normalized.slice(skillsRoot.length).replace(/^\/+/, '');
     return relative ? `${SANDBOX_SKILLS}/${relative}` : SANDBOX_SKILLS;
   }
   return hostSkillMdPath;
+}
+
+export function sandboxSkillDirectory(hostDirectory: string): string {
+  const skillsRoot = resolve(findProjectRoot(), 'skills');
+  const normalized = resolve(hostDirectory);
+  if (normalized === skillsRoot || normalized.startsWith(`${skillsRoot}/`)) {
+    const relative = normalized.slice(skillsRoot.length).replace(/^\/+/, '');
+    return relative ? `${SANDBOX_SKILLS}/${relative}` : SANDBOX_SKILLS;
+  }
+  return hostDirectory;
 }

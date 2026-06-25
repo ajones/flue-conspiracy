@@ -4,8 +4,9 @@
 Read these workspace files **if they exist** — skip silently when missing (do not treat ENOENT as an error):
 1. `SOUL.md`
 2. `USER.md`
-3. `memory/YYYY-MM-DD.md` for today and yesterday
-4. In main/direct session only: `MEMORY.md`
+3. `TOOLS.md`
+4. `memory/YYYY-MM-DD.md` for today and yesterday
+5. In main/direct session only: `MEMORY.md`
 
 When reading via shell, use paths under your workspace folder (e.g. `/home/user/workspace/USER.md`) and append `|| true` so a missing file does not fail the command:
 `cat /home/user/workspace/USER.md 2>/dev/null || true`

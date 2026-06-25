@@ -127,7 +127,7 @@ function buildContextInstructions(ctx: DispatchContext): string | undefined {
 
   if (ctx.skillContext) {
     parts.push(
-      'skillContext: One or more skills have been matched to the user\'s request. You MUST read each skill file listed in skillContext before replying.',
+      'skillContext: One or more skills have been matched to the user\'s request. You MUST read each skill file listed in skillContext before replying. Skill path and directory values are sandbox paths (/home/user/skills/...), not host filesystem paths.',
     );
   }
 

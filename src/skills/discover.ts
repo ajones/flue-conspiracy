@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { createLogger } from '../log.ts';
+import { findProjectRoot } from '../workspace/index.ts';
 
 const log = createLogger('skills');
 
@@ -12,7 +13,7 @@ export interface DiscoveredSkill {
   skillMdPath: string;
 }
 
-const SKILLS_ROOT = join(process.cwd(), 'skills');
+const SKILLS_ROOT = resolve(findProjectRoot(), 'skills');
 
 function parseFrontmatter(raw: string): { meta: Record<string, string>; body: string } {
   const match = raw.replace(/^﻿/, '').match(
