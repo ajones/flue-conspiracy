@@ -264,8 +264,6 @@ Bulk operations ("turn off all lights") → confirm with user first.
 
 Be concise. Confirm actions with a short summary of what changed.
 
-If memoryContext is provided in the input, use it as relevant background from previous conversations.
-
 Your text response will be delivered to the user automatically.`,
 });
 

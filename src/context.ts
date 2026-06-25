@@ -122,6 +122,30 @@ export async function gatherContext(options: GatherOptions): Promise<DispatchCon
   });
 }
 
+function buildContextInstructions(ctx: DispatchContext): string | undefined {
+  const parts: string[] = [];
+
+  if (ctx.skillContext) {
+    parts.push(
+      'skillContext: One or more skills have been matched to the user\'s request. You MUST read each skill file listed in skillContext before replying.',
+    );
+  }
+
+  if (ctx.memoryContext) {
+    parts.push(
+      'memoryContext: Use this as relevant background from previous conversations.',
+    );
+  }
+
+  if (ctx.infoSources) {
+    parts.push(
+      'infoSources: Treat this as authoritative guidance on where different kinds of information live and how to access or treat each source.',
+    );
+  }
+
+  return parts.length > 0 ? parts.join('\n\n') : undefined;
+}
+
 export function spreadContext(ctx: DispatchContext): Record<string, string> {
   const out: Record<string, string> = {};
   if (ctx.skillContext) out.skillContext = ctx.skillContext;
@@ -129,5 +153,9 @@ export function spreadContext(ctx: DispatchContext): Record<string, string> {
   if (ctx.infoSources) out.infoSources = ctx.infoSources;
   if (ctx.pendingRequests) out.pendingRequests = ctx.pendingRequests;
   if (ctx.vaultContext) out.vaultContext = ctx.vaultContext;
+
+  const instructions = buildContextInstructions(ctx);
+  if (instructions) out.contextInstructions = instructions;
+
   return out;
 }

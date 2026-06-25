@@ -16,13 +16,7 @@ const OPERATIONS = `Delegate to the right subagent based on what the user needs:
 - Use the ical_* tools directly for calendar queries — upcoming events, date range lookups, fuzzy search across calendars. Always sync before querying if freshness matters.
 - 'mystery' when the reply needs to sound mysterious, cryptic, or enigmatic
 
-Reply to the user with the result. Your text response will be delivered to the user automatically.
-
-If memoryContext is provided in the input, use it as relevant background from previous conversations.
-
-If infoSources is provided in the input, treat it as authoritative guidance on where different kinds of information live and how to access or treat each source.
-
-If vaultContext is provided in the input, it contains documents from the knowledge vault that are likely relevant to the conversation. Read them before replying. If you discover the information has changed or you learn something new about a topic covered in the vault, offer to update the relevant doc after completing the user's request.`;
+Reply to the user with the result. Your text response will be delivered to the user automatically.`;
 
 export default createAgent(() => {
   const { sandbox, cwd, hostWorkspacePath, sandboxWorkspacePath } = createAgentSandbox('raven-lead');
