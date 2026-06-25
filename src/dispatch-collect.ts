@@ -1,6 +1,7 @@
 import { dispatch, observe } from '@flue/runtime';
 import type { NamedAgentDispatchRequest } from '@flue/runtime';
 import type { Context } from '@opentelemetry/api';
+import { parseReplyAttachments } from './telegram-attachments.ts';
 import { trackDispatchContext } from './instrumentation.ts';
 import { createLogger } from './log.ts';
 
@@ -11,6 +12,7 @@ const DEFAULT_TIMEOUT_MS = 300_000;
 export interface CollectedReply {
   dispatchId: string | undefined;
   text: string;
+  imagePaths: string[];
 }
 
 export interface DispatchAndCollectOptions {
@@ -69,15 +71,22 @@ export function dispatchAndCollect(
 
         clearTimeout(timeout);
         unsub?.();
-        const text = event.messages
+        const rawText = event.messages
           .filter((m: any) => m.role === 'assistant')
           .flatMap((m: any) => Array.isArray(m.content) ? m.content : [])
           .filter((c: any) => c.type === 'text')
           .map((c: any) => c.text)
           .filter(Boolean)
           .join('\n');
-        log.info('Dispatch complete', { agent, instanceId, dispatchId: receipt.dispatchId, textLength: text.length });
-        resolve({ dispatchId: receipt.dispatchId, text });
+        const { text, imagePaths } = parseReplyAttachments(rawText);
+        log.info('Dispatch complete', {
+          agent,
+          instanceId,
+          dispatchId: receipt.dispatchId,
+          textLength: text.length,
+          imageCount: imagePaths.length,
+        });
+        resolve({ dispatchId: receipt.dispatchId, text, imagePaths });
       });
     }).catch((err) => {
       clearTimeout(timeout);

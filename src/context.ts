@@ -1,5 +1,6 @@
 import { trace } from '@opentelemetry/api';
 import { getMemoryConfig, getMemoryMaxRecall, getMemoryScope, getWorkspaceConfig, resolveVaultEntries } from './config.ts';
+import { TELEGRAM_ATTACH_INSTRUCTIONS } from './telegram-attachments.ts';
 import { classifySkills, formatSkillContext, type ClassifiedSkills } from './skills/index.ts';
 import { isMemoryAvailable, recallMemory } from './memory/index.ts';
 import { loadInfoSources } from './info-sources.ts';
@@ -18,6 +19,7 @@ export interface DispatchContext {
   pendingRequests?: string;
   vaultContext?: string;
   workspacePath?: string;
+  deliveryInstructions?: string;
 }
 
 export interface GatherOptions {
@@ -127,6 +129,10 @@ export async function gatherContext(options: GatherOptions): Promise<DispatchCon
         }
       }
 
+      if (conversationKey.startsWith('telegram:')) {
+        ctx.deliveryInstructions = TELEGRAM_ATTACH_INSTRUCTIONS;
+      }
+
       log.debug('Context gathered', { agent, durationMs: Date.now() - startedAt });
       return ctx;
     } catch (err) {
@@ -169,6 +175,10 @@ function buildContextInstructions(ctx: DispatchContext): string | undefined {
     );
   }
 
+  if (ctx.deliveryInstructions) {
+    parts.push(`deliveryInstructions: ${ctx.deliveryInstructions}`);
+  }
+
   return parts.length > 0 ? parts.join('\n\n') : undefined;
 }
 
@@ -180,6 +190,7 @@ export function spreadContext(ctx: DispatchContext): Record<string, string> {
   if (ctx.pendingRequests) out.pendingRequests = ctx.pendingRequests;
   if (ctx.vaultContext) out.vaultContext = ctx.vaultContext;
   if (ctx.workspacePath) out.workspacePath = ctx.workspacePath;
+  if (ctx.deliveryInstructions) out.deliveryInstructions = ctx.deliveryInstructions;
 
   const instructions = buildContextInstructions(ctx);
   if (instructions) out.contextInstructions = instructions;

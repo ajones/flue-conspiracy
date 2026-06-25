@@ -299,11 +299,12 @@ export class Scheduler {
           'UPDATE raven_job_runs SET assembled_prompt = ?, dispatch_id = ? WHERE id = ?'
         ).run(assembled, jobResult.dispatchId ?? null, runId);
 
-        if (jobResult.text && !isSilentJobReply(jobResult.text)) {
+        if ((jobResult.text || jobResult.imagePaths.length > 0) && !isSilentJobReply(jobResult.text)) {
           await tracer.startActiveSpan('job.deliver', {
             attributes: {
               'raven.job.target': job.target,
               'raven.job.result_length': jobResult.text.length,
+              'raven.job.image_count': jobResult.imagePaths.length,
             },
           }, async (deliverSpan) => {
             try {
@@ -324,10 +325,12 @@ export class Scheduler {
                 },
               }, { parentContext: otelContext.active() });
 
-              if (deliveryReply.text) {
-                await sendToConversation(job.target, deliveryReply.text);
+              const imagePaths = [...jobResult.imagePaths, ...deliveryReply.imagePaths];
+              if (deliveryReply.text || imagePaths.length > 0) {
+                await sendToConversation(job.target, deliveryReply.text, { imagePaths });
                 deliverSpan.addEvent('delivered', {
                   'raven.job.delivery_length': deliveryReply.text.length,
+                  'raven.job.delivery_image_count': imagePaths.length,
                 });
               }
               deliverSpan.setStatus({ code: SpanStatusCode.OK });

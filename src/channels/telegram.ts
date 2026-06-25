@@ -1,12 +1,13 @@
 import { SpanStatusCode, context as otelContext, trace } from '@opentelemetry/api';
 import { createTelegramChannel, type TelegramChannel, type TelegramConversationRef } from '@flue/telegram';
-import { Api } from 'grammy';
+import { Api, InputFile } from 'grammy';
 import type { Message, Update } from 'grammy/types';
 import { getTelegramBots, type TelegramBotConfig } from '../config.ts';
 import { trackAgentInstance, registerAgentResolver } from '../agent-names.ts';
 import { gatherContext, spreadContext } from '../context.ts';
-import { dispatchAndCollect } from '../dispatch-collect.ts';
+import { dispatchAndCollect, type CollectedReply } from '../dispatch-collect.ts';
 import { isClearCommand, clearAgentSession } from '../session-reset.ts';
+import { validateImagePaths } from '../telegram-attachments.ts';
 import { createLogger } from '../log.ts';
 
 export interface TelegramBot {
@@ -16,6 +17,44 @@ export interface TelegramBot {
 }
 
 const tracer = trace.getTracer('raven');
+
+function sendOptions(ref: TelegramConversationRef) {
+  return {
+    ...(ref.type === 'business-chat' ? { business_connection_id: ref.businessConnectionId } : {}),
+    ...(ref.messageThreadId !== undefined ? { message_thread_id: ref.messageThreadId } : {}),
+    ...('directMessagesTopicId' in ref && ref.directMessagesTopicId !== undefined
+      ? { direct_messages_topic_id: ref.directMessagesTopicId }
+      : {}),
+  };
+}
+
+async function sendReplyToConversation(
+  client: Api,
+  ref: TelegramConversationRef,
+  reply: Pick<CollectedReply, 'text' | 'imagePaths'>,
+): Promise<void> {
+  const opts = sendOptions(ref);
+  const paths = reply.imagePaths.length > 0 ? validateImagePaths(reply.imagePaths) : [];
+
+  if (paths.length === 0) {
+    if (reply.text) await client.sendMessage(ref.chatId, reply.text, opts);
+    return;
+  }
+
+  if (paths.length === 1) {
+    await client.sendPhoto(ref.chatId, new InputFile(paths[0]), {
+      ...opts,
+      ...(reply.text ? { caption: reply.text } : {}),
+    });
+    return;
+  }
+
+  await client.sendMediaGroup(ref.chatId, paths.map((path, i) => ({
+    type: 'photo' as const,
+    media: new InputFile(path),
+    ...(i === 0 && reply.text ? { caption: reply.text } : {}),
+  })), opts);
+}
 
 function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChannel) {
   const tgLog = createLogger(`telegram:${bot.name}`);
@@ -50,15 +89,7 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
             await clearAgentSession(convKey);
             tgLog.info('Session cleared', { convKey });
             span.addEvent('session.cleared');
-            await client.sendMessage(incoming.chat.id, 'Conversation cleared.', {
-              ...(conversation.type === 'business-chat'
-                ? { business_connection_id: conversation.businessConnectionId }
-                : {}),
-              ...(conversation.messageThreadId === undefined ? {} : { message_thread_id: conversation.messageThreadId }),
-              ...(conversation.directMessagesTopicId === undefined
-                ? {}
-                : { direct_messages_topic_id: conversation.directMessagesTopicId }),
-            });
+            await client.sendMessage(incoming.chat.id, 'Conversation cleared.', sendOptions(conversation));
             span.setStatus({ code: SpanStatusCode.OK });
             return;
           }
@@ -88,16 +119,11 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
               ...spreadContext(ctx),
             },
           }, otelContext.active());
-          if (reply.text) {
-            await client.sendMessage(incoming.chat.id, reply.text, {
-              ...(conversation.type === 'business-chat'
-                ? { business_connection_id: conversation.businessConnectionId }
-                : {}),
-              ...(conversation.messageThreadId === undefined ? {} : { message_thread_id: conversation.messageThreadId }),
-              ...(conversation.directMessagesTopicId === undefined
-                ? {}
-                : { direct_messages_topic_id: conversation.directMessagesTopicId }),
-            });
+          if (reply.text || reply.imagePaths.length > 0) {
+            await sendReplyToConversation(client, conversation, reply);
+            if (reply.imagePaths.length > 0) {
+              span.addEvent('reply.images_sent', { 'raven.telegram.image_count': reply.imagePaths.length });
+            }
           }
           span.setStatus({ code: SpanStatusCode.OK });
           return;
@@ -129,17 +155,9 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
               } : undefined,
             },
           }, otelContext.active());
-          if (cbReply.text && query.message) {
+          if (query.message && (cbReply.text || cbReply.imagePaths.length > 0)) {
             const cbConversation = conversationFromMessage(query.message);
-            await client.sendMessage(query.message.chat.id, cbReply.text, {
-              ...(cbConversation.type === 'business-chat'
-                ? { business_connection_id: cbConversation.businessConnectionId }
-                : {}),
-              ...(cbConversation.messageThreadId === undefined ? {} : { message_thread_id: cbConversation.messageThreadId }),
-              ...(cbConversation.directMessagesTopicId === undefined
-                ? {}
-                : { direct_messages_topic_id: cbConversation.directMessagesTopicId }),
-            });
+            await sendReplyToConversation(client, cbConversation, cbReply);
           }
           span.setStatus({ code: SpanStatusCode.OK });
         }
@@ -208,19 +226,17 @@ const defaultChannel: TelegramChannel = bots[0]?.channel ?? createTelegramChanne
 
 export const channel: TelegramChannel = defaultChannel;
 
-export async function sendTelegramText(id: string, text: string): Promise<void> {
+export async function sendTelegramReply(
+  id: string,
+  reply: Pick<CollectedReply, 'text' | 'imagePaths'>,
+): Promise<void> {
   if (bots.length === 0) throw new Error('No telegram bots configured');
   const ref = bots[0].channel.parseConversationKey(id);
-  const opts = ref.type === 'business-chat'
-    ? { business_connection_id: ref.businessConnectionId }
-    : {};
-  await bots[0].client.sendMessage(ref.chatId, text, {
-    ...opts,
-    ...(ref.messageThreadId !== undefined ? { message_thread_id: ref.messageThreadId } : {}),
-    ...('directMessagesTopicId' in ref && ref.directMessagesTopicId !== undefined
-      ? { direct_messages_topic_id: ref.directMessagesTopicId }
-      : {}),
-  });
+  await sendReplyToConversation(bots[0].client, ref, reply);
+}
+
+export async function sendTelegramText(id: string, text: string): Promise<void> {
+  await sendTelegramReply(id, { text, imagePaths: [] });
 }
 
 export function startPolling() {
