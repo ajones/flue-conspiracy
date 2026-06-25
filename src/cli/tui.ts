@@ -45,6 +45,8 @@ class Tui {
   private cursor = 0;
   private busy = false;
   private renderQueued = false;
+  private loadingFrame = 0;
+  private loadingTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(agent: string) {
     this.agent = agent;
@@ -64,9 +66,29 @@ class Tui {
   }
 
   private exit() {
+    this.stopLoadingAnimation();
     process.stdout.write('\x1b[?25h\x1b[?1049l');
     process.stdin.setRawMode(false);
     process.exit(0);
+  }
+
+  private startLoadingAnimation() {
+    if (this.loadingTimer) return;
+    this.loadingFrame = 0;
+    this.loadingTimer = setInterval(() => {
+      this.loadingFrame = (this.loadingFrame + 1) % 3;
+      this.render();
+    }, 400);
+  }
+
+  private stopLoadingAnimation() {
+    if (!this.loadingTimer) return;
+    clearInterval(this.loadingTimer);
+    this.loadingTimer = null;
+  }
+
+  private loadingDots() {
+    return '.'.repeat((this.loadingFrame % 3) + 1);
   }
 
   private queueRender() {
@@ -86,7 +108,7 @@ class Tui {
     const lines: string[] = [];
     for (const m of this.messages) {
       if (m.role === 'assistant' && m.content === '' && this.busy) {
-        lines.push(`${CYAN}▸ ${DIM}…${RESET}`);
+        lines.push(`${CYAN}▸ ${DIM}${this.loadingDots()}${RESET}`);
       } else {
         const pfx = m.role === 'user' ? `${GREEN}▹ ${RESET}` : `${CYAN}▸ ${RESET}`;
         const wrapped = wrapText(m.content, contentWidth);
@@ -171,6 +193,7 @@ class Tui {
     this.busy = true;
     this.messages.push({ role: 'assistant', content: '' });
     const lastIdx = this.messages.length - 1;
+    this.startLoadingAnimation();
     this.render();
 
     try {
@@ -185,6 +208,7 @@ class Tui {
         const body = await res.text();
         this.messages[lastIdx].content = `Error ${res.status}: ${body}`;
         this.busy = false;
+        this.stopLoadingAnimation();
         this.render();
         return;
       }
@@ -196,6 +220,7 @@ class Tui {
     }
 
     this.busy = false;
+    this.stopLoadingAnimation();
     this.render();
   }
 
@@ -237,6 +262,7 @@ class Tui {
           if (!Array.isArray(events)) continue;
           for (const ev of events) {
             if (ev.type === 'text_delta') {
+              if (this.messages[lastIdx].content === '') this.stopLoadingAnimation();
               this.messages[lastIdx].content += ev.text;
               changed = true;
             } else if (ev.type === 'idle') {
