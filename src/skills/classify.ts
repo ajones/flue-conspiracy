@@ -1,6 +1,5 @@
 import { getAccessToken } from '../auth/tokens.ts';
 import { isSkillEnabled } from '../config.ts';
-import { sandboxSkillDirectory, sandboxSkillMdPath } from '../sandbox.ts';
 import { loadSkills, type DiscoveredSkill } from './discover.ts';
 import { createLogger } from '../log.ts';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
@@ -223,10 +222,10 @@ export function formatSkillContext(result: ClassifiedSkills): string {
 
   for (const s of result.enabled) {
     parts.push(
-      `<skill name="${s.name}" path="${sandboxSkillMdPath(s.skillMdPath)}" directory="${sandboxSkillDirectory(s.directory)}">\n` +
+      `<skill name="${s.name}" path="${s.skillMdPath}" directory="${s.directory}">\n` +
         `You MUST read this file before processing the user's request.\n` +
-        `The path and directory are sandbox paths — use them exactly with read/bash. ` +
-        `Resolve relative paths in the skill (e.g. ../other/SKILL.md) from directory, not host paths.\n` +
+        `The path and directory are host filesystem paths — use them exactly with read/bash. ` +
+        `Resolve relative paths in the skill (e.g. ../other/SKILL.md) from directory.\n` +
         `</skill>`,
     );
   }

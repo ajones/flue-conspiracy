@@ -19,11 +19,11 @@ const OPERATIONS = `Delegate to the right subagent based on what the user needs:
 Reply to the user with the result. Your text response will be delivered to the user automatically.`;
 
 export default createAgent(() => {
-  const { sandbox, cwd, hostWorkspacePath, sandboxWorkspacePath } = createAgentSandbox('raven-lead');
+  const { sandbox, cwd, hostWorkspacePath } = createAgentSandbox('raven-lead');
 
   const ravenLead = defineAgentProfile({
     name: 'raven-lead',
-    instructions: withWorkspaceContext(hostWorkspacePath, OPERATIONS + sandboxPathHint(sandboxWorkspacePath)),
+    instructions: withWorkspaceContext(hostWorkspacePath, OPERATIONS + sandboxPathHint(hostWorkspacePath)),
     subagents: [
       defineAgentProfile({
         name: 'mystery',
