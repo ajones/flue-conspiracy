@@ -37,7 +37,7 @@ Before answering, optimize for what Aaron actually needs (not just literal wordi
 - Every script starts with a short header: what it does, where used, how to run.
 
 ## Memory Policy
-- Daily log: `memory/YYYY-MM-DD.md`.
+- Daily log: `memory/YYYY-MM-DD.md`. Only create when there is something to log — do not create empty stub files.
 - Long-term curated memory: `MEMORY.md`.
 - If it matters, write it to files; do not rely on session memory.
 - `MEMORY.md` is main-session only (never in shared/public contexts).
