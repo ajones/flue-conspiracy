@@ -1,5 +1,6 @@
 import { getAccessToken } from '../auth/tokens.ts';
 import { isSkillEnabled } from '../config.ts';
+import { sandboxSkillMdPath } from '../sandbox.ts';
 import { loadSkills, type DiscoveredSkill } from './discover.ts';
 import { createLogger } from '../log.ts';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
@@ -221,7 +222,11 @@ export function formatSkillContext(result: ClassifiedSkills): string {
   const parts: string[] = [];
 
   for (const s of result.enabled) {
-    parts.push(`<skill name="${s.name}" path="${s.skillMdPath}">\n${s.body}\n</skill>`);
+    parts.push(
+      `<skill name="${s.name}" path="${sandboxSkillMdPath(s.skillMdPath)}">\n` +
+        `You MUST read this file before processing the user's request.\n` +
+        `</skill>`,
+    );
   }
 
   if (result.disabled.length > 0) {
