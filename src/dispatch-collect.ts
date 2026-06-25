@@ -3,7 +3,7 @@ import type { NamedAgentDispatchRequest } from '@flue/runtime';
 import type { Context } from '@opentelemetry/api';
 import { trackDispatchContext } from './instrumentation.ts';
 
-const DEFAULT_TIMEOUT_MS = 180_000;
+const DEFAULT_TIMEOUT_MS = 300_000;
 
 export interface CollectedReply {
   dispatchId: string | undefined;
