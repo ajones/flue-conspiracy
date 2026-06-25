@@ -30,9 +30,27 @@ This skill tracks a private auction pool where 27 owners drafted the 48 teams in
 
 A team that loses the 3rd-place match (finishes 4th) gets the Quarter-Finals tier ($156) — there's no separate 4th-place prize.
 
+## Credentials
+
+The agent's workspace must have a `.footballdata.credentials` file:
+
+```
+token=<token value>
+```
+
+The token is a free API key from https://www.football-data.org/client/register. Send it as the `X-Auth-Token` header on every request.
+
+Load the token from `.footballdata.credentials` in your workspace folder (the `workspacePath` from your input) before calling the API:
+
+```bash
+FOOTBALL_DATA_TOKEN=$(grep '^token=' "$WORKSPACE/.footballdata.credentials" | cut -d= -f2-)
+```
+
+Set `WORKSPACE` to your `workspacePath` value.
+
 ## Determining each team's current status
 
-Use the **fifa-world-cup** skill to get current standings and match data from the football-data.org API (`/v4/competitions/WC/matches`, requires `FOOTBALL_DATA_TOKEN`). Each match has a `stage` field — inspect the actual values returned (e.g. `GROUP_STAGE`, and knockout stages like `LAST_32`/`ROUND_OF_16`/`LAST_16`, `QUARTER_FINALS`, `SEMI_FINALS`, `THIRD_PLACE`, `FINAL` — exact naming may vary, check live data) and `status` (`FINISHED`, `SCHEDULED`/`TIMED`, `LIVE`/`IN_PLAY`).
+Use the **fifa-world-cup** skill to get current standings and match data from the football-data.org API (`/v4/competitions/WC/matches`, requires the token from `.footballdata.credentials` — see Credentials above). Each match has a `stage` field — inspect the actual values returned (e.g. `GROUP_STAGE`, and knockout stages like `LAST_32`/`ROUND_OF_16`/`LAST_16`, `QUARTER_FINALS`, `SEMI_FINALS`, `THIRD_PLACE`, `FINAL` — exact naming may vary, check live data) and `status` (`FINISHED`, `SCHEDULED`/`TIMED`, `LIVE`/`IN_PLAY`).
 
 For each team in roster.json (matching on `api_name`), determine its **current guaranteed payout**:
 
@@ -79,4 +97,4 @@ If you're unsure how to map the live `stage`/`status` values to these tiers, say
 
 - Read-only. This skill never modifies roster.json or places any bets/payments.
 - All money figures are guaranteed/locked-in totals based on completed matches — never report a projected or "if they win it all" figure as if it were guaranteed.
-- If `FOOTBALL_DATA_TOKEN` is missing, tell the user (don't proceed without it) — see the fifa-world-cup skill.
+- If `.footballdata.credentials` is missing or the `token` value is empty, tell the user (don't proceed without it).
