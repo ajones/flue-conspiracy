@@ -22,3 +22,15 @@ for (const dir of dirs) {
     }
   }
 }
+
+// Patch flue CLI watcher to ignore memory/ directories
+const WATCH_NEEDLE = 'if (part === "node_modules") return true;';
+const WATCH_REPLACEMENT = 'if (part === "node_modules") return true;\n\t\t\t\tif (part === "memory") return true;';
+const flueCliPath = 'node_modules/@flue/cli/dist/flue.js';
+try {
+  const src = readFileSync(flueCliPath, 'utf8');
+  if (src.includes(WATCH_NEEDLE)) {
+    writeFileSync(flueCliPath, src.replace(WATCH_NEEDLE, WATCH_REPLACEMENT));
+    console.log(`patched: ${flueCliPath} (watch ignore memory/)`);
+  }
+} catch {}
