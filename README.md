@@ -88,9 +88,15 @@ The first telegram bot is mounted at `/channels/telegram/webhook`. Additional bo
 
 ## Development
 
+Requires **Node.js ≥ 22.19** (`@flue/runtime` uses the built-in `node:sqlite` module). Do not run `dist/server.mjs` with Bun — use Node.
+
 ```bash
-npx flue dev
+npm run dev          # preferred — runs flue dev via Node
+# or: npx flue dev   # also fine
+# not: bun run dev   # Bun rewrites npx → bun x and breaks the server runtime
 ```
+
+The `raven` CLI (`bun src/cli/index.ts`) is fine under Bun; the Flue gateway server is not.
 
 ## Auth Flow
 

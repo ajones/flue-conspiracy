@@ -6,7 +6,7 @@ import { dispatchAndCollect } from '../dispatch-collect.ts';
 import { classifyTurn, type ConversationMessage } from '../turn/index.ts';
 import { createLogger } from '../log.ts';
 import { gatherContext, spreadContext } from '../context.ts';
-import { isClearCommand, clearAgentSession } from '../session-reset.ts';
+import { recordSessionCommandSpan, tryHandleSessionCommand } from '../session-commands.ts';
 import { getImessageConfig, getImessageConversations, type ImessageConversationConfig } from '../config.ts';
 
 type ImsgChat = {
@@ -374,13 +374,14 @@ async function handleEvent(event: ImsgEvent) {
     const convKey = `imessage:chat:${chatId}`;
     trackAgentInstance(convKey, configuredAgent);
 
-    if (messageText && isClearCommand(messageText)) {
-      await clearAgentSession(convKey);
-      log.info('Session cleared', { convKey });
-      span.addEvent('session.cleared');
-      await sendImessageText(convKey, 'Conversation cleared.');
-      span.setStatus({ code: SpanStatusCode.OK });
-      return;
+    if (messageText) {
+      const cmd = await tryHandleSessionCommand(messageText, configuredAgent, convKey);
+      if (cmd.handled) {
+        recordSessionCommandSpan(span, cmd);
+        await sendImessageText(convKey, cmd.message);
+        span.setStatus({ code: SpanStatusCode.OK });
+        return;
+      }
     }
 
     const ctx = await gatherContext({ text: normalized.text ?? '', agent: configuredAgent, conversationKey: convKey });

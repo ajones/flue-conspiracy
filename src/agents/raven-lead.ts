@@ -56,6 +56,10 @@ export default createAgent(() => {
   return {
     profile: ravenLead,
     model: 'openai-codex/gpt-5.4-mini',
+    compaction: {
+      reserveTokens: 8000,
+      keepRecentTokens: 3000,
+    },
     tools: [...workspaceContextTools, ...appleNotesTools, ...icalReaderTools],
     cwd,
     sandbox,

@@ -44,9 +44,12 @@ function servicePath(): string {
   ].join(':');
 }
 
+const FLUE_CLI = join(PROJECT_ROOT, 'node_modules', '@flue', 'cli', 'dist', 'flue.js');
+
 function build() {
   console.log('Building...');
-  execSync('npx flue build', { cwd: PROJECT_ROOT, stdio: 'inherit' });
+  const node = nodePath();
+  execSync(`"${node}" "${FLUE_CLI}" build`, { cwd: PROJECT_ROOT, stdio: 'inherit' });
 }
 
 const SERVER_ENTRY = join(PROJECT_ROOT, 'dist', 'server.mjs');

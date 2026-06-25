@@ -1,13 +1,14 @@
 import { SpanStatusCode, context as otelContext, trace } from '@opentelemetry/api';
 import { createTelegramChannel, type TelegramChannel, type TelegramConversationRef } from '@flue/telegram';
-import { Api, InputFile } from 'grammy';
+import { Api, GrammyError, InputFile } from 'grammy';
 import type { Message, Update } from 'grammy/types';
 import { getTelegramBots, type TelegramBotConfig } from '../config.ts';
 import { trackAgentInstance, registerAgentResolver } from '../agent-names.ts';
 import { gatherContext, spreadContext } from '../context.ts';
 import { dispatchAndCollect, type CollectedReply } from '../dispatch-collect.ts';
-import { isClearCommand, clearAgentSession } from '../session-reset.ts';
+import { recordSessionCommandSpan, tryHandleSessionCommand } from '../session-commands.ts';
 import { validateImagePaths } from '../telegram-attachments.ts';
+import { TELEGRAM_PARSE_MODE, toTelegramMarkdown } from '../telegram-format.ts';
 import { createLogger } from '../log.ts';
 
 export interface TelegramBot {
@@ -28,6 +29,79 @@ function sendOptions(ref: TelegramConversationRef) {
   };
 }
 
+function isMarkdownParseError(err: unknown): boolean {
+  return err instanceof GrammyError && err.error_code === 400;
+}
+
+async function sendFormattedMessage(
+  client: Api,
+  chatId: number,
+  text: string,
+  opts: ReturnType<typeof sendOptions>,
+): Promise<void> {
+  const formatted = toTelegramMarkdown(text);
+  try {
+    await client.sendMessage(chatId, formatted, { ...opts, parse_mode: TELEGRAM_PARSE_MODE });
+  } catch (err) {
+    if (!isMarkdownParseError(err)) throw err;
+    await client.sendMessage(chatId, text, opts);
+  }
+}
+
+async function sendFormattedPhoto(
+  client: Api,
+  chatId: number,
+  photo: InputFile,
+  caption: string | undefined,
+  opts: ReturnType<typeof sendOptions>,
+): Promise<void> {
+  if (!caption) {
+    await client.sendPhoto(chatId, photo, opts);
+    return;
+  }
+
+  const formatted = toTelegramMarkdown(caption);
+  try {
+    await client.sendPhoto(chatId, photo, {
+      ...opts,
+      caption: formatted,
+      parse_mode: TELEGRAM_PARSE_MODE,
+    });
+  } catch (err) {
+    if (!isMarkdownParseError(err)) throw err;
+    await client.sendPhoto(chatId, photo, { ...opts, caption });
+  }
+}
+
+async function sendFormattedMediaGroup(
+  client: Api,
+  chatId: number,
+  paths: string[],
+  caption: string | undefined,
+  opts: ReturnType<typeof sendOptions>,
+): Promise<void> {
+  const formattedCaption = caption ? toTelegramMarkdown(caption) : undefined;
+  const media = paths.map((path, i) => ({
+    type: 'photo' as const,
+    media: new InputFile(path),
+    ...(i === 0 && formattedCaption ? { caption: formattedCaption } : {}),
+  }));
+
+  try {
+    await client.sendMediaGroup(chatId, media, {
+      ...opts,
+      ...(formattedCaption ? { parse_mode: TELEGRAM_PARSE_MODE } : {}),
+    });
+  } catch (err) {
+    if (!isMarkdownParseError(err) || !caption) throw err;
+    await client.sendMediaGroup(chatId, paths.map((path, i) => ({
+      type: 'photo' as const,
+      media: new InputFile(path),
+      ...(i === 0 ? { caption } : {}),
+    })), opts);
+  }
+}
+
 async function sendReplyToConversation(
   client: Api,
   ref: TelegramConversationRef,
@@ -37,23 +111,16 @@ async function sendReplyToConversation(
   const paths = reply.imagePaths.length > 0 ? validateImagePaths(reply.imagePaths) : [];
 
   if (paths.length === 0) {
-    if (reply.text) await client.sendMessage(ref.chatId, reply.text, opts);
+    if (reply.text) await sendFormattedMessage(client, ref.chatId, reply.text, opts);
     return;
   }
 
   if (paths.length === 1) {
-    await client.sendPhoto(ref.chatId, new InputFile(paths[0]), {
-      ...opts,
-      ...(reply.text ? { caption: reply.text } : {}),
-    });
+    await sendFormattedPhoto(client, ref.chatId, new InputFile(paths[0]), reply.text || undefined, opts);
     return;
   }
 
-  await client.sendMediaGroup(ref.chatId, paths.map((path, i) => ({
-    type: 'photo' as const,
-    media: new InputFile(path),
-    ...(i === 0 && reply.text ? { caption: reply.text } : {}),
-  })), opts);
+  await sendFormattedMediaGroup(client, ref.chatId, paths, reply.text || undefined, opts);
 }
 
 function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChannel) {
@@ -85,11 +152,10 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
           const convKey = channel.conversationKey(conversation);
           trackAgentInstance(convKey, bot.agent);
 
-          if (isClearCommand(text)) {
-            await clearAgentSession(convKey);
-            tgLog.info('Session cleared', { convKey });
-            span.addEvent('session.cleared');
-            await client.sendMessage(incoming.chat.id, 'Conversation cleared.', sendOptions(conversation));
+          const cmd = await tryHandleSessionCommand(text, bot.agent, convKey);
+          if (cmd.handled) {
+            recordSessionCommandSpan(span, cmd);
+            await client.sendMessage(incoming.chat.id, cmd.message, sendOptions(conversation));
             span.setStatus({ code: SpanStatusCode.OK });
             return;
           }

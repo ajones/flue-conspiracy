@@ -1,12 +1,6 @@
 #!/usr/bin/env bun
 
 import { parseArgs } from 'node:util';
-import { auth } from './auth.ts';
-import { jobs } from './jobs.ts';
-import { logs } from './logs.ts';
-import { tracing } from './tracing.ts';
-import { start, stop, install, uninstall, restart, serviceStatus } from './service.ts';
-import { tui } from './tui.ts';
 
 const USAGE = `raven — flue-conspiracy CLI
 
@@ -53,27 +47,39 @@ async function main() {
     process.exit(0);
   }
 
-  if (command === 'start') return start();
-  if (command === 'stop') return stop();
-  if (command === 'restart') return restart();
-  if (command === 'tui') return tui(rest);
-  if (command === 'install') return install();
-  if (command === 'uninstall') return uninstall();
-  if (command === 'status') return serviceStatus();
+  if (command === 'start' || command === 'stop' || command === 'restart'
+    || command === 'install' || command === 'uninstall' || command === 'status') {
+    const { start, stop, install, uninstall, restart, serviceStatus } = await import('./service.ts');
+    if (command === 'start') return start();
+    if (command === 'stop') return stop();
+    if (command === 'restart') return restart();
+    if (command === 'install') return install();
+    if (command === 'uninstall') return uninstall();
+    if (command === 'status') return serviceStatus();
+  }
+
+  if (command === 'tui') {
+    const { tui } = await import('./tui.ts');
+    return tui(rest);
+  }
 
   if (command === 'jobs') {
+    const { jobs } = await import('./jobs.ts');
     return jobs(process.argv.slice(3));
   }
 
   if (command === 'auth') {
+    const { auth } = await import('./auth.ts');
     return auth(rest[0]);
   }
 
   if (command === 'logs') {
+    const { logs } = await import('./logs.ts');
     return logs(process.argv.slice(3));
   }
 
   if (command === 'tracing') {
+    const { tracing } = await import('./tracing.ts');
     return tracing(rest);
   }
 

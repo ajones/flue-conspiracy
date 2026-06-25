@@ -1,6 +1,7 @@
 import JSON5 from 'json5';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { findProjectRoot } from './workspace/index.ts';
 
 export interface TelegramBotConfig {
   name: string;
@@ -88,7 +89,7 @@ export interface RavenConfig {
   traceRetentionDays?: number;
 }
 
-const CONFIG_PATH = join(import.meta.dirname, '..', 'raven.json5');
+const CONFIG_PATH = join(findProjectRoot(), 'raven.json5');
 
 let cached: RavenConfig | null = null;
 

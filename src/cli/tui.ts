@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { getGatewayUrl } from '../config.ts';
 import { isClearCommand } from '../session-clear.ts';
+import { isSessionCommand } from '../session-commands.ts';
 
 const BASE_URL = getGatewayUrl();
 
@@ -157,10 +158,10 @@ class Tui {
       const text = this.input.trim();
       if (!text) return;
       if (text === '/quit' || text === '/exit' || text === '/q') return this.exit();
-      if (isClearCommand(text)) {
+      if (isSessionCommand(text)) {
         this.input = '';
         this.cursor = 0;
-        void this.clearSession();
+        void this.runSessionCommand(text);
         return;
       }
       this.input = '';
@@ -207,26 +208,37 @@ class Tui {
     this.render();
   }
 
-  private async clearSession() {
-    this.messages = [];
+  private async runSessionCommand(command: string) {
+    if (isClearCommand(command)) {
+      this.messages = [];
+    }
     this.render();
+
+    const label = isClearCommand(command) ? 'clear' : 'compact';
 
     try {
       const url = `${BASE_URL}/agents/${this.agent}/${this.instanceId}`;
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: '/clear' }),
+        body: JSON.stringify({ message: command }),
       });
 
       if (res.ok) {
-        this.messages.push({ role: 'assistant', content: 'Conversation cleared.' });
+        const body = await res.json() as { message?: string };
+        this.messages.push({
+          role: 'assistant',
+          content: body.message ?? (label === 'clear' ? 'Conversation cleared.' : 'Conversation history compacted.'),
+        });
       } else {
         const body = await res.text();
-        this.messages.push({ role: 'assistant', content: `Failed to clear session (${res.status}): ${body}` });
+        this.messages.push({ role: 'assistant', content: `Failed to ${label} session (${res.status}): ${body}` });
       }
     } catch {
-      this.messages.push({ role: 'assistant', content: `Failed to clear session — gateway not reachable at ${BASE_URL}` });
+      this.messages.push({
+        role: 'assistant',
+        content: `Failed to ${label} session — gateway not reachable at ${BASE_URL}`,
+      });
     }
 
     this.render();
