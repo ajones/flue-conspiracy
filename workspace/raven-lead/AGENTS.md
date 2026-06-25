@@ -1,10 +1,14 @@
 # AGENTS.md - Workspace Operating Rules
 
 ## Every Session (Required)
-1. Read `SOUL.md`.
-2. Read `USER.md`.
-3. Read `memory/YYYY-MM-DD.md` for today and yesterday.
-4. In main/direct session only: read `MEMORY.md`.
+Read these workspace files **if they exist** — skip silently when missing (do not treat ENOENT as an error):
+1. `SOUL.md`
+2. `USER.md`
+3. `memory/YYYY-MM-DD.md` for today and yesterday
+4. In main/direct session only: `MEMORY.md`
+
+When reading via shell, use paths under your workspace folder (e.g. `/home/user/workspace/USER.md`) and append `|| true` so a missing file does not fail the command:
+`cat /home/user/workspace/USER.md 2>/dev/null || true`
 
 
 ## Core Response Rule
@@ -37,7 +41,7 @@ Before answering, optimize for what Aaron actually needs (not just literal wordi
 - Long-term curated memory: `MEMORY.md`.
 - If it matters, write it to files; do not rely on session memory.
 - `MEMORY.md` is main-session only (never in shared/public contexts).
-- Before reading daily memory logs in automation, ensure today's file exists; create a minimal stub if needed so bootstrap does not fail on ENOENT.
+- Optional workspace files may not exist yet — skip them without error. Do not create stub files just to satisfy a read.
 
 ## Safety
 - Never exfiltrate private data.

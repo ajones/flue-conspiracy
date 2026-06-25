@@ -61,7 +61,7 @@ export function createAgentSandbox(agentName: string): AgentSandbox {
 
 export function sandboxPathHint(sandboxWorkspacePath: string | undefined): string {
   if (!sandboxWorkspacePath) return '';
-  return `\n\nYour workspace folder is: ${sandboxWorkspacePath}\nSkills are mounted at: ${SANDBOX_SKILLS}\nUse these paths when skills reference credential files, scripts, or other workspace resources.`;
+  return `\n\nYour workspace folder is: ${sandboxWorkspacePath}\nSkills are mounted at: ${SANDBOX_SKILLS}\nUse these paths when skills reference credential files, scripts, or other workspace resources.\nWorkspace files (USER.md, SOUL.md, memory/*.md, etc.) are optional — read them from ${sandboxWorkspacePath} if present; skip missing files without error.`;
 }
 
 export function sandboxSkillMdPath(hostSkillMdPath: string): string {
