@@ -16,6 +16,24 @@ interface CodexAuth {
   last_refresh?: string;
 }
 
+export interface TokenExpiry {
+  expiresAt: Date;
+  expiresInMs: number;
+  isExpired: boolean;
+}
+
+function decodeJwtExp(token: string): number | null {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
+    return typeof json.exp === 'number' ? json.exp : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function loadCodexAuth(): Promise<CodexAuth> {
   const raw = await readFile(AUTH_FILE, 'utf8');
   return JSON.parse(raw) as CodexAuth;
@@ -43,4 +61,22 @@ export async function getApiKey(): Promise<string> {
   }
 
   throw new Error('No API key found — run `raven auth login` or `codex login` first');
+}
+
+export async function getTokenExpiry(): Promise<TokenExpiry | null> {
+  const auth = await loadCodexAuth();
+
+  if (!auth.tokens?.access_token) return null;
+
+  const exp = decodeJwtExp(auth.tokens.access_token);
+  if (exp === null) return null;
+
+  const expiresAt = new Date(exp * 1000);
+  const expiresInMs = expiresAt.getTime() - Date.now();
+
+  return {
+    expiresAt,
+    expiresInMs,
+    isExpired: expiresInMs <= 0,
+  };
 }

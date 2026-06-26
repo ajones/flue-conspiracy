@@ -1,5 +1,5 @@
 import { login } from '../auth/oauth.ts';
-import { loadCodexAuth } from '../auth/tokens.ts';
+import { loadCodexAuth, getTokenExpiry } from '../auth/tokens.ts';
 
 const AUTH_USAGE = `raven auth — manage Codex credentials
 
@@ -32,6 +32,24 @@ async function status(): Promise<void> {
     if (codexAuth.tokens?.access_token) {
       console.log(`Access token: present`);
       console.log(`Account ID: ${codexAuth.tokens.account_id}`);
+
+      const expiry = await getTokenExpiry();
+      if (expiry) {
+        if (expiry.isExpired) {
+          console.log(`Token status: expired`);
+        } else {
+          const ms = expiry.expiresInMs;
+          const days = Math.floor(ms / 86_400_000);
+          const hours = Math.floor((ms % 86_400_000) / 3_600_000);
+          const minutes = Math.floor((ms % 3_600_000) / 60_000);
+          const parts = [
+            days > 0 ? `${days}d` : null,
+            hours > 0 ? `${hours}h` : null,
+            `${minutes}m`,
+          ].filter(Boolean).join(' ');
+          console.log(`Token expires: ${expiry.expiresAt.toISOString()} (in ${parts})`);
+        }
+      }
     }
 
     if (codexAuth.OPENAI_API_KEY) {
