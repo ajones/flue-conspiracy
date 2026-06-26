@@ -2,10 +2,6 @@
 name: raven-apple-notes
 description: Read, list, append to, and replace lines in Apple Notes via AppleScript from the command line.
 metadata:
-  openclaw:
-    emoji: "📝"
-    requires: { bins: [] }
-    install: []
 ---
 
 # Apple Notes

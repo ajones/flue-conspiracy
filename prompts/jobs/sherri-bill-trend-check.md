@@ -5,7 +5,7 @@
 Use the `bill` skill to analyze Bill's observations for new or emerging trends.
 
 Follow this order:
-1. Read and follow `~/.openclaw/workspace-sherri/skills/bill/SKILL.md`.
+1. Read and follow `skills/bill/SKILL.md`.
 2. Review `BILL_OBSERVATIONS.md`.
 3. Review `BILL_TRENDS.md` to see whether the trend is already captured.
 4. Only call something a new trend if it is strong and defensible: supported by at least 3 observations across at least 2 different days, or by a clear escalation pattern that is obvious from multiple examples. Single incidents, one-off quirks, and vague themes do not count.

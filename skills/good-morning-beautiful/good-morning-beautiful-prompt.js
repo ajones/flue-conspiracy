@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 
 // Prompt builder for the good-morning-beautiful skill.
-// Keep BASE_PROMPT in sync with:
-//   ~/.openclaw/skills/ai-tools/good_morning_beautiful/good_morning_message.py (BASE_PROMPT)
 //
 // Usage:
 //   ./good-morning-beautiful-prompt.js

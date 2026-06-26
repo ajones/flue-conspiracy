@@ -2,7 +2,7 @@
 
 ## Task
 
-1. Read `~/.openclaw/workspace/ACTIVE_PROJECTS.md`.
+1. Read `ACTIVE_PROJECTS.md in your workspace`.
 2. Find all projects marked `[in progress]`. For each one, read any property lines listed under it (see the **Project Properties** key in the file) and use judgment to decide whether to include it in this run — for example, skipping a project that has a future "don't ask until" date.
 3. **If there are eligible in-progress projects:** Pick **one** to focus on this run. Rotate through them by selecting the one whose most recent update timestamp is oldest (or has no updates yet). If all are equally fresh, pick the first. Compose a short, casual check-in message for that project. Ask for a status update and include 1–2 natural follow-up questions to prompt real progress info (e.g. blockers, next step, % done). Then go to Delivery.
 4. **If there are zero eligible in-progress projects:** Find all projects marked `[not started]`.
@@ -13,7 +13,7 @@
 
 ## Pending request
 
-Before delivering, append the following request block to `~/.openclaw/workspace/PENDING_AGENT_REQUESTS.md` (create the file with the header `# Pending Agent Requests` if it doesn't exist):
+Before delivering, append the following request block to `PENDING_AGENT_REQUESTS.md` in your workspace (create the file with the header `# Pending Agent Requests` if it doesn't exist):
 
 ```
 ## Active project check-in — <today's date YYYY-MM-DD> — <project name>
@@ -21,7 +21,7 @@ Before delivering, append the following request block to `~/.openclaw/workspace/
 Question asked: <exact check-in question you are asking>
 
 When Aaron replies:
-1. Append a dated update line to the project in `~/.openclaw/workspace/ACTIVE_PROJECTS.md` summarizing what he said.
+1. Append a dated update line to the project in `ACTIVE_PROJECTS.md in your workspace` summarizing what he said.
 2. If he says the project is done, change its status to `[done]`.
 3. **Set a `check_after` date** on the project based on the content of his reply:
    - Read his reply carefully and determine the most natural next check-in window.

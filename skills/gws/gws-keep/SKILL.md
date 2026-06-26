@@ -3,11 +3,6 @@ name: gws-keep
 version: 1.0.0
 description: "Manage Google Keep notes."
 metadata:
-  openclaw:
-    category: "productivity"
-    requires:
-      bins: ["gws"]
-    cliHelp: "gws keep --help"
 ---
 
 # keep (v1)

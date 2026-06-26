@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
-const WORKSPACE_ROOT = resolve(process.env.HOME ?? ".", ".openclaw", "workspace");
+const WORKSPACE_ROOT = resolve(process.env.WORKSPACE_ROOT ?? process.env.HOME ?? ".", "local", "raven", "flue-conspiracy", "workspace", "raven-lead");
 const CREDENTIALS_PATH = resolve(WORKSPACE_ROOT, ".ical.credentials");
 
 export interface CalendarCredential {

@@ -16,7 +16,7 @@ are part of the one snark line you are sending.
 Behavior:
 1. Delegate to `home-assistant` to fetch `binary_sensor.cat_box_time_to_clean` via `ha_get_entity`.
 2. If that request fails (non-200), stop with **no final assistant text** (same as sensor `off`)—do not explain the failure in your reply; that would still notify Aaron.
-3. Read `cron/jobs.json` and `cron/jobs-state.json`, find the `homeassistant-cat-box-snark` job entry, and load its `state.lastRunAtMs` as the last time this job ran.
+3. Run `raven jobs show homeassistant-cat-box-snark --json` and load `job.lastRunAt` (milliseconds since epoch) as the last time this job ran. If null, treat as never run (use 0).
 4. Delegate to `home-assistant` to fetch `input_datetime.cat_box_last_clean_time` via `ha_get_entity`.
 5. Parse `input_datetime.cat_box_last_clean_time.state` as a datetime in Aaron's local timezone (America/Los_Angeles).
 6. If `.state` is `off`, compare the last-clean timestamp against the job's last run time.

@@ -4,7 +4,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![Playwright](https://img.shields.io/badge/Playwright-1.40+-blue.svg)](https://playwright.dev/)
 
-基於 Playwright 的網頁爬蟲 OpenClaw Skill。支援反爬保護，已驗證成功爬取 Discuss.com.hk 等複雜網站。
+基於 Playwright 的網頁爬蟲 agent skill。支援反爬保護，已驗證成功爬取 Discuss.com.hk 等複雜網站。
 
 > 📦 **安裝方法：** 查看 [INSTALL.md](INSTALL.md)  
 > 📚 **完整文件：** 查看 [SKILL.md](SKILL.md)  
@@ -129,7 +129,7 @@ playwright-scraper-skill/
 
 ## 💡 使用建議
 
-1. **先試 web_fetch** — OpenClaw 內建工具最快
+1. **先試 web_fetch** — Raven 內建工具最快
 2. **動態網站用 Simple** — 沒有反爬保護時
 3. **反爬網站用 Stealth** ⭐ — 主力工具
 4. **特殊網站用專用 skill** — YouTube、Reddit 等

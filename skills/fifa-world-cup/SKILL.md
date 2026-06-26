@@ -2,19 +2,6 @@
 name: fifa-world-cup
 description: Fetch FIFA World Cup group standings and match results via the football-data.org API and write them to a `.world-cup-<YEAR>` file in the agent's workspace. Use when asked about World Cup standings, group tables, scores, or results, or when a cron job needs to refresh the standings file.
 metadata:
-  openclaw:
-    emoji: "⚽"
-    requires:
-      bins: ["curl", "jq"]
-    install:
-      - id: brew-curl
-        kind: brew
-        formula: curl
-        bins: ["curl"]
-      - id: brew-jq
-        kind: brew
-        formula: jq
-        bins: ["jq"]
 ---
 
 # FIFA World Cup Skill
@@ -31,7 +18,7 @@ If `FOOTBALL_DATA_TOKEN` is not set, tell the user to register for a free key an
 
 ## Determining the workspace and year
 
-- Workspace directory follows the pattern `~/.openclaw/workspace-{agentName}` (or `~/.openclaw/workspace` for the `main` agent).
+- Workspace directory is provided to the agent at runtime.
 - The standings file is `{workspace}/.world-cup-<YEAR>`, where `<YEAR>` is the year of the current/most recent World Cup tournament (e.g. `.world-cup-2026`).
 
 ## 1. Fetch group standings

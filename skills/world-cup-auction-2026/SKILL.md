@@ -2,10 +2,6 @@
 name: world-cup-auction-2026
 description: Track the 2026 World Cup Auction Challenge pool — compute each owner's guaranteed winnings based on how far their drafted team(s) have advanced, and produce a stack-ranked leaderboard. Use when asked who's winning the World Cup pool, how much someone has won, or for a leaderboard/standings of the auction.
 metadata:
-  openclaw:
-    emoji: "🏆"
-    requires:
-      bins: ["curl", "jq"]
 ---
 
 # World Cup Auction 2026 Skill

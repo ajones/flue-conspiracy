@@ -3,11 +3,6 @@ name: gws-forms
 version: 1.0.0
 description: "Read and write Google Forms."
 metadata:
-  openclaw:
-    category: "productivity"
-    requires:
-      bins: ["gws"]
-    cliHelp: "gws forms --help"
 ---
 
 # forms (v1)

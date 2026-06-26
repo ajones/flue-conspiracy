@@ -6,7 +6,7 @@
 
 **[中文文檔](README_ZH.md)** | English
 
-A Playwright-based web scraping OpenClaw Skill with anti-bot protection. Successfully tested on complex websites like Discuss.com.hk.
+A Playwright-based web scraping agent skill with anti-bot protection. Successfully tested on complex websites like Discuss.com.hk.
 
 > 📦 **Installation:** See [INSTALL.md](INSTALL.md)  
 > 📚 **Full Documentation:** See [SKILL.md](SKILL.md)  
@@ -132,7 +132,7 @@ playwright-scraper-skill/
 
 ## 💡 Best Practices
 
-1. **Try web_fetch first** — OpenClaw's built-in tool is fastest
+1. **Try web_fetch first** — the built-in tool is fastest
 2. **Use Simple for dynamic sites** — When no anti-bot protection
 3. **Use Stealth for protected sites** ⭐ — Main workhorse
 4. **Use specialized skills** — For YouTube, Reddit, etc.

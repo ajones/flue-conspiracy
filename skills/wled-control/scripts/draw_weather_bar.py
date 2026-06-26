@@ -25,7 +25,7 @@ COLOR MAPPING
 USAGE
     python3 draw_weather_bar.py <device_name> <temp1> <temp2> ... <tempN>
 
-    device_name   logical name from ~/.openclaw/workspace/.wled-config
+    device_name   logical name from workspace/raven-lead/.wled-config
     temp1..N      temperatures in °F, ordered 7am → 9pm
 
 EXAMPLES
@@ -43,7 +43,7 @@ import sys
 import time
 from pathlib import Path
 
-DEFAULT_CONFIG = Path.home() / ".openclaw/workspace/.wled-config"
+DEFAULT_CONFIG = Path.home() / "local/raven/flue-conspiracy/workspace/raven-lead/.wled-config"
 
 COLOR_STOPS = [
     (50,  [0,     0, 255]),  # blue

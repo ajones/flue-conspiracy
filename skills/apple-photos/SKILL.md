@@ -2,9 +2,6 @@
 name: apple-photos
 description: Apple Photos.app integration for macOS. List albums, browse photos, search by date/person/content, export photos.
 metadata:
-  openclaw:
-    emoji: "📷"
-    os: ["darwin"]
 ---
 
 # Apple Photos

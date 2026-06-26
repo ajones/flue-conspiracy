@@ -7,7 +7,7 @@ Create a short "Tip of the Day" based on the current contents of `BILL_CHEETSHEE
 ### How to choose the tip
 1. Read `BILL_CHEETSHEET.md`.
 2. Collect the bullet items under `## What tends to work` into an ordered list (item 1, item 2, …).
-3. Run `~/.openclaw/scripts/day-of-year-index <count>` where `<count>` is the number of items. The script prints a number N.
+3. Run `scripts/day-of-year-index <count>` where `<count>` is the number of items. The script prints a number N.
 4. Select item N from the list — where item 1 is the first bullet, item 2 is the second, and so on. Do not use zero-based indexing.
 
 ### Context from recent observations

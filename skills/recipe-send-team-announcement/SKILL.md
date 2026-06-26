@@ -3,12 +3,6 @@ name: recipe-send-team-announcement
 version: 1.0.0
 description: "Send a team announcement via both Gmail and a Google Chat space."
 metadata:
-  openclaw:
-    category: "recipe"
-    domain: "communication"
-    requires:
-      bins: ["gws"]
-      skills: ["gws-gmail", "gws-chat"]
 ---
 
 # Announce via Gmail and Google Chat

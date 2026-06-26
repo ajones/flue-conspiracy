@@ -11,7 +11,7 @@ Behavior:
 3. Sort the tasks by due date.
 4. Fetch upcoming Konstella events:
    ```bash
-   cd ~/.openclaw/workspace/skills/playwright-scraper-skill && \
+   cd skills/playwright-scraper-skill && \
      TYPES=events LIMIT=100 \
      node ~/.openclaw/workspace-pp-maint/skills/konstella/scripts/get-feed.js \
      ~/.openclaw/workspace-pp-maint/.konstella.credentials

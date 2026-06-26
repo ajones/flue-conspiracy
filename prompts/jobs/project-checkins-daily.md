@@ -2,11 +2,11 @@
 
 ## Source of truth
 
-Read `~/.openclaw/workspace/ACTIVE_PROJECTS.md` as the source of truth for project state. If the file does not exist, treat that as no in-progress projects and reply exactly `NO_REPLY`.
+Read `ACTIVE_PROJECTS.md` in your workspace as the source of truth for project state. If the file does not exist, treat that as no in-progress projects and reply exactly `NO_REPLY`.
 
 ## Task
 
-1. Read `~/.openclaw/workspace/ACTIVE_PROJECTS.md`.
+1. Read `ACTIVE_PROJECTS.md` in your workspace.
 2. Identify every project currently marked as in progress.
 3. If there are zero in-progress projects, reply exactly `NO_REPLY` and stop.
 4. If there are one or more in-progress projects, compose a short check-in asking for a status update on each in-progress project.

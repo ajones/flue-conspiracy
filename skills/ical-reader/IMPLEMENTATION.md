@@ -16,7 +16,7 @@ All scripts are intended to be composed from the command line or other tools, wi
 
 ### Credentials / Calendars Registry
 
-- File: `~/.openclaw/workspace/.ical.credentials`
+- File: `.ical.credentials` in your workspace
 - Purpose: durable registry of known calendars.
 - Format: **one calendar per line**, using a robust separator:
   - `URL|||calendar_name|||extra_details`

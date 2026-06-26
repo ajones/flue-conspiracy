@@ -7,7 +7,7 @@ It's 7pm PT. Check today's date. If today is after 2026-06-02, output `NO_REPLY`
 Otherwise, run the following command and capture its output as `INDEX`:
 
 ```bash
-~/.openclaw/scripts/day-of-year-index 20
+scripts/day-of-year-index 20
 ```
 
 Use `INDEX` to select the corresponding message from the numbered list below (1–20). Deliver that message VERBATIM — do not soften, sanitize, paraphrase, or editorialize. Output it exactly as written. No preamble, no commentary, nothing else.

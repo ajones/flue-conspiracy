@@ -2,19 +2,6 @@
 name: homeassistant
 description: Read Home Assistant entity states and control lights and devices via the REST API. Use when the user asks about home sensors, device states, lights, switches, integrations, or anything related to their smart home. Also use when asked to run a Home Assistant audit or health check — load references/audit.md for that workflow.
 metadata:
-  openclaw:
-    emoji: "🏠"
-    requires:
-      bins: ["curl", "jq"]
-    install:
-      - id: brew-curl
-        kind: brew
-        formula: curl
-        bins: ["curl"]
-      - id: brew-jq
-        kind: brew
-        formula: jq
-        bins: ["jq"]
 ---
 
 # Home Assistant Skill
@@ -29,7 +16,7 @@ Environment variables (injected from `raven.json5` into the agent shell):
 - `HOMEASSISTANT_URL` — base URL (e.g. `http://192.168.86.244:8123`)
 - `HOMEASSISTANT_TOKEN` — long-lived access token
 
-Do **not** hardcode URL/token in bash, and do **not** source stale copies from `~/.openclaw/workspace/.homeassistant`. Always use `$HOMEASSISTANT_URL` and `$HOMEASSISTANT_TOKEN`.
+Do **not** hardcode URL/token in bash, and do **not** source stale copies from stale local files. Always use `$HOMEASSISTANT_URL` and `$HOMEASSISTANT_TOKEN`.
 
 **jq pitfalls:** In jq, `|` binds tighter than `or`. This is wrong and yields `Cannot index string with string "entity_id"`:
 

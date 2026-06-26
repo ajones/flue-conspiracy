@@ -2,11 +2,6 @@
 name: ical-reader
 description: Safely register, sync, and query secret iCal feeds via Bun scripts.
 metadata:
-  openclaw:
-    emoji: "📅"
-    requires:
-      bins: ["bun"]
-    install: []
 ---
 
 # ical-reader
@@ -26,16 +21,16 @@ All outputs are structured JSON suitable for piping into `jq` or higher‑level 
 
 ### Files and Storage
 
-- **Credentials registry**: `~/.openclaw/workspace/.ical.credentials`
+- **Credentials registry**: `.ical.credentials` in your workspace
   - One line per calendar:
     - `URL|||calendar_name|||extra_details`
   - `URL` is secret and treated as write‑only.
   - `calendar_name` is the human‑friendly identifier (e.g. `Aaron Personal`, `Bun Calendar`).
   - `extra_details` is arbitrary metadata (JSON or free text), preserved but not interpreted.
-- **SQLite DB**: `~/.openclaw/workspace/skills/ical-reader/ical-events.sqlite`
+- **SQLite DB**: `.ical-events.sqlite` in your workspace
   - Stores **past events** only (based on event end time).
   - See `IMPLEMENTATION.md` for full schema.
-- **Cache directory**: `~/.openclaw/workspace/skills/ical-reader/cache/`
+- **Cache directory**: `.ical-cache/` in your workspace
   - Raw ICS: `<url_hash>.ics`
   - Metadata: `<url_hash>.meta.json` (etag, lastModified, contentHash, lastSync, etc.).
 
@@ -46,7 +41,7 @@ All outputs are structured JSON suitable for piping into `jq` or higher‑level 
 All commands are run from the `skills/ical-reader` directory:
 
 ```bash
-cd ~/.openclaw/skills/ical-reader
+cd skills/ical-reader
 ```
 
 #### 1. Register a calendar – `ical-add`

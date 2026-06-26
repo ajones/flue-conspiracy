@@ -3,11 +3,6 @@ name: gws-gmail-read
 version: 1.0.0
 description: "Gmail: Read a message and extract its body or headers."
 metadata:
-  openclaw:
-    category: "productivity"
-    requires:
-      bins: ["gws"]
-    cliHelp: "gws gmail +read --help"
 ---
 
 # gmail +read

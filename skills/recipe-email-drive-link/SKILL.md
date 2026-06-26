@@ -3,12 +3,6 @@ name: recipe-email-drive-link
 version: 1.0.0
 description: "Share a Google Drive file and email the link with a message to recipients."
 metadata:
-  openclaw:
-    category: "recipe"
-    domain: "productivity"
-    requires:
-      bins: ["gws"]
-      skills: ["gws-drive", "gws-gmail"]
 ---
 
 # Email a Google Drive File Link

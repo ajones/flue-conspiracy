@@ -22,7 +22,7 @@
 
 const playwrightPath = require('path').join(
     require('os').homedir(),
-    '.openclaw/workspace/skills/playwright-scraper-skill/node_modules/playwright'
+    'local/raven/flue-conspiracy/skills/playwright-scraper-skill/node_modules/playwright'
 );
 const { chromium } = require(playwrightPath);
 const fs = require('fs');

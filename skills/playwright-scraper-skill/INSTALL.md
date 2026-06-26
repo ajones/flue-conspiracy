@@ -38,15 +38,14 @@ node scripts/playwright-stealth.js https://example.com
 
 ## 🔧 Advanced Installation
 
-### Using with OpenClaw
+### Using with Raven
 
-If you're using OpenClaw, you can place this skill in the skills directory:
+If you're using Raven, you can place this skill in the skills directory:
 
 ```bash
-# Assuming your OpenClaw workspace is at ~/.openclaw/workspace
-cp -r playwright-scraper-skill ~/.openclaw/workspace/skills/
+cp -r playwright-scraper-skill skills/
 
-# Then you can invoke it in OpenClaw
+# Then you can invoke it in Raven
 ```
 
 ---

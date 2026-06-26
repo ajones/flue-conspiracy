@@ -30,7 +30,7 @@ All control is done via HTTP requests to the device’s `/json` and `/json/state
 The mapping file lives in the agent workspace and is the single source of truth for resolving
 logical device names to their HTTP base URLs:
 
-- Path: `~/.openclaw/workspace/.wled-config`
+- Path: `workspace/raven-lead/.wled-config`
 - Format: JSON object mapping **device name → config**.
 - The config value can be either:
   - A **string** base URL (simple form), or

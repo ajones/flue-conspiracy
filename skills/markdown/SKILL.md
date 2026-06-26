@@ -2,12 +2,6 @@
 name: markdown
 description: Convert markdown text to an HTML fragment for use in emails or other HTML contexts.
 metadata:
-  openclaw:
-    requires:
-      bins:
-        - python3
-    install:
-      - pip3 install markdown --break-system-packages -q
 ---
 
 # markdown
@@ -18,13 +12,13 @@ Convert markdown to an HTML fragment (no `<html>`/`<body>` wrapper) using the he
 
 ```bash
 # From a string
-echo "# Hello" | python3 ~/.openclaw/skills/markdown/md2html.py
+echo "# Hello" | python3 skills/markdown/md2html.py
 
 # From a file
-python3 ~/.openclaw/skills/markdown/md2html.py input.md
+python3 skills/markdown/md2html.py input.md
 
 # Capture output for use in another command
-html=$(echo "**bold text**" | python3 ~/.openclaw/skills/markdown/md2html.py)
+html=$(echo "**bold text**" | python3 skills/markdown/md2html.py)
 ```
 
 ## Output
@@ -62,6 +56,6 @@ Output:
 ## Integration with gws-gmail-send
 
 ```bash
-html=$(cat summary.md | python3 ~/.openclaw/skills/markdown/md2html.py)
+html=$(cat summary.md | python3 skills/markdown/md2html.py)
 gws gmail +send --to recipient@example.com --subject "Subject" --body "$html" --html
 ```

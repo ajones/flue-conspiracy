@@ -18,7 +18,7 @@ Pick whichever feels funniest in the moment. Keep it short (3–5 lines max). En
 
 The question you are asking: "Did you take out the trash?"
 
-Append the following block to `~/.openclaw/workspace/PENDING_AGENT_REQUESTS.md`:
+Append the following block to `PENDING_AGENT_REQUESTS.md in your workspace`:
 
 ```
 ## Trash reminder — {today's date}
@@ -28,7 +28,7 @@ Question asked: Did you take out the trash?
 When Aaron replies:
 - If he says yes or confirms it's done, acknowledge it and remove this block from PENDING_AGENT_REQUESTS.md.
 - If he says no or not yet, note it and remove this block from PENDING_AGENT_REQUESTS.md (he can take action himself).
-- Remove this block from `~/.openclaw/workspace/PENDING_AGENT_REQUESTS.md` after processing.
+- Remove this block from `PENDING_AGENT_REQUESTS.md in your workspace` after processing.
 ```
 
 Substitute today's date (YYYY-MM-DD) in the block header.

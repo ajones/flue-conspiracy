@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Google Weather API integration for OpenClaw.
+Google Weather API integration.
 Uses the same API key as Google Maps (GOOGLE_API_KEY).
 """
 import requests

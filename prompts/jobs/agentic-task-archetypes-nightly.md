@@ -3,8 +3,8 @@ Goal: Each night at 3:00 AM America/Los_Angeles, infer and maintain a set of "ag
 Scratch-space rule (required):
 - At run start, read the injected first line for the current job id from the format `[cron:<job-id> ...]`.
 - If you need temporary helper files/scripts, use only:
-  - `/Users/raven/.openclaw/workspace/tmp/cron/<job-id>/`
-- Do not create helper/temp files in `/Users/raven/.openclaw/workspace` root.
+  - a `tmp/` subdirectory inside your workspace
+- Do not create helper/temp files in your workspace root.
 - Before final output, delete any scratch files you created for this run.
 
 Source channels:

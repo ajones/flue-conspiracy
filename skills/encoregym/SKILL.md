@@ -7,13 +7,6 @@ description: >
   makeups, or news for Encore Gym. Leo is not enrolled in gym; do not use for swim
   (use swim-class-finder for swim).
 metadata:
-  openclaw:
-    emoji: "🏋️"
-    requires: { bins: ["node"] }
-    install:
-      - id: npm
-        kind: npm
-        cwd: skills/encoregym
 ---
 
 # Encore Gym Skill

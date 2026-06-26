@@ -2,7 +2,7 @@
 
 ## Task
 
-1. Read `~/.openclaw/workspace/PENDING_AGENT_REQUESTS.md`.
+1. Read `PENDING_AGENT_REQUESTS.md` in your workspace.
 2. If the file is missing, empty, or has no pending request blocks older than 2 hours, reply exactly `NO_REPLY`.
 3. Otherwise, identify each pending request block older than 2 hours.
 4. Compose one short, casual nudge that names the old request(s) briefly and asks Aaron about them.

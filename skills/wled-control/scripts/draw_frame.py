@@ -5,7 +5,7 @@ draw_frame.py — Send a full pixel frame to a WLED matrix device.
 Usage:
     python3 draw_frame.py <device_name> <design_name> [--config PATH]
 
-Device names are resolved via ~/.openclaw/workspace/.wled-config.
+Device names are resolved via workspace/raven-lead/.wled-config.
 Built-in designs: smiley, rainbow, bullseye, checkerboard
 
 Add new designs by defining a function named design_<name>(width, height) -> pixels
@@ -18,7 +18,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-DEFAULT_CONFIG = Path.home() / ".openclaw/workspace/.wled-config"
+DEFAULT_CONFIG = Path.home() / "local/raven/flue-conspiracy/workspace/raven-lead/.wled-config"
 
 
 # ---------------------------------------------------------------------------

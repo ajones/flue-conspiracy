@@ -5,7 +5,7 @@ Every time this job runs (Fridays), follow the `dad-jokes` skill but bias strong
 ## Steps
 
 1. **Use the dad-jokes skill**
-   - Skill location: `~/.openclaw/skills/dad-joke/SKILL.md`.
+   - Skill location: `skills/dad-joke/SKILL.md`.
    - Log file (shared):
      `~/Library/Mobile Documents/com~apple~CloudDocs/RavenClaw-Collab/dad-joke-log.md`
    - Follow the standard workflow:

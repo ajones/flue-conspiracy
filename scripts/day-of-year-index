@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Usage: day-of-year-index <count>
+# Outputs a 1-based index into a list of <count> items, cycling by day of year.
+# Jan 1 = day 0. Result: (day_of_year % count) + 1
+
+set -euo pipefail
+
+if [[ $# -ne 1 || ! "$1" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Usage: $(basename "$0") <count>" >&2
+  exit 1
+fi
+
+count=$1
+day_of_year=$(python3 -c "import datetime; t = datetime.date.today(); print(t.timetuple().tm_yday - 1)")
+echo $(( (day_of_year % count) + 1 ))

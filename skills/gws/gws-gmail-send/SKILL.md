@@ -3,11 +3,6 @@ name: gws-gmail-send
 version: 1.0.0
 description: "Gmail: Send an email."
 metadata:
-  openclaw:
-    category: "productivity"
-    requires:
-      bins: ["gws"]
-    cliHelp: "gws gmail +send --help"
 ---
 
 # gmail +send

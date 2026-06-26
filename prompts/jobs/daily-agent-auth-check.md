@@ -4,15 +4,15 @@ Use the `auth-check` skill for this cron run. The skill owns the auth-status and
 
 ## What to do
 
-1. Read `~/.openclaw/skills/auth-check/SKILL.md`.
+1. Read `skills/auth-check/SKILL.md`.
 2. Run the skill entry point directly:
 
    ```bash
-   python3 ~/.openclaw/skills/auth-check/scripts/auth_check.py
+   python3 skills/auth-check/scripts/auth_check.py
    ```
 
 3. Treat the script output as the user-facing message for this run. Do not recreate the auth-status or token-usage logic inline.
-4. Do not create helper files in the workspace root. If the skill ever needs scratch space, keep it inside `~/.openclaw/skills/auth-check/scripts` or another skill-local directory.
+4. Do not create helper files in the workspace root. If the skill ever needs scratch space, keep it inside `skills/auth-check/scripts` or another skill-local directory.
 
 ## Safety
 

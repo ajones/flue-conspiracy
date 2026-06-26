@@ -11,7 +11,7 @@ Inputs:
     - "autonomous AI agents operations examples"
 
 - Fallback for dynamic or problematic sites: use the Playwright scraper skill if web_fetch content looks obviously empty, just boilerplate, or blocked.
-  - Skill path: `/Users/raven/.openclaw/skills/playwright-scraper-skill`
+  - Skill path: `skills/playwright-scraper-skill`
   - Primary script: `node scripts/playwright-simple.js "<URL>"`
   - Parse the JSON output's `content` field as the page text.
 
@@ -53,7 +53,7 @@ Detailed steps:
    1. Use web_search with 2–3 different queries oriented toward **contemporary AI-agent automation patterns**.
    2. Fetch content for promising results via web_fetch.
    3. If web_fetch for a given URL returns only boilerplate, footers, or obviously missing content (e.g., dynamic JS site), re-fetch that URL using the Playwright scraper skill:
-      - Change directory to `/Users/raven/.openclaw/skills/playwright-scraper-skill`.
+      - Change directory to `skills/playwright-scraper-skill`.
       - Run: `node scripts/playwright-simple.js "<URL>"`.
       - Parse the JSON `content` field as the article/page body.
 

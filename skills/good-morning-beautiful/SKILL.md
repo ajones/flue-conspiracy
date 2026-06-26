@@ -21,11 +21,9 @@ This skill is for producing **one ultra-short good-morning or morning-adjacent a
 
 ## Implementation
 
-### Node 
+### Node
 
 The prompt template lives in `good-morning-beautiful-prompt.js` in this skill directory.
-**Keep that file’s base prompt in sync** with
-`~/.openclaw/skills/ai-tools/good_morning_beautiful/good_morning_message.py` (`BASE_PROMPT`).
 
 From this directory you can run:
 
@@ -34,20 +32,7 @@ From this directory you can run:
 ./good-morning-beautiful-prompt.js "sassy, nerdy, for my wife"
 ```
 
-The script writes a complete instruction prompt to **stdout**. The caller passes it to the model (for example via ClawRouter). `good-morning-beautiful.js` runs the prompt builder, then invokes `clawrouter chat` with the full prompt on stdin.
-
-### Python (ai-tools / Vertex or OpenAI)
-
-Same behavior via the OpenClaw `ai-tools` CLI (uses the shared `BASE_PROMPT` in Python):
-
-```bash
-cd ~/.openclaw/skills/ai-tools
-./ai-tools good_morning_beautiful
-./ai-tools good_morning_beautiful "sassy, nerdy, for my wife"
-./ai-tools good_morning_beautiful -f /path/to/hints.txt
-```
-
-Output is a **single line** (one greeting), printed to stdout. Default provider is Vertex (`gemini-2.5-flash`); use `--provider openai` to switch.
+The script writes a complete instruction prompt to **stdout**. Pass it to the model of your choice.
 
 ## Expected Model Behavior (for reference)
 
@@ -85,6 +70,4 @@ model should:
    - Respond with **only that single greeting** — one line, no numbering or bullet markers.
    - No explanations, no meta-comments, no labels.
 
-This keeps the behavior spec visible in the skill file while the concrete
-LLM prompt lives alongside it in an executable script that other tools or
-extensions can call directly.
+This keeps the behavior spec visible in the skill file while the concrete prompt lives alongside it in `good-morning-beautiful-prompt.js`.

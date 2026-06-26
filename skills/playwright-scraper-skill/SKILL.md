@@ -10,7 +10,7 @@ author: Simon Chan
 
 # Playwright Scraper Skill
 
-A Playwright-based web scraping OpenClaw Skill with anti-bot protection. Choose the best approach based on the target website's anti-bot level.
+A Playwright-based web scraping agent skill with anti-bot protection. Choose the best approach based on the target website's anti-bot level.
 
 ---
 
@@ -40,10 +40,10 @@ npx playwright install chromium
 
 ### 1️⃣ Simple Sites (No Anti-Bot)
 
-Use OpenClaw's built-in `web_fetch` tool:
+Use the built-in `web_fetch` tool:
 
 ```bash
-# Invoke directly in OpenClaw
+# Invoke directly in Raven
 Hey, fetch me the content from https://example.com
 ```
 
@@ -120,7 +120,7 @@ node assets/youtube_handler.js "https://www.youtube.com/watch?v=VIDEO_ID"
 ## 🎓 Best Practices
 
 ### 1. Try web_fetch First
-If the site doesn't have dynamic loading, use OpenClaw's `web_fetch` tool—it's fastest.
+If the site doesn't have dynamic loading, use the `web_fetch` tool—it's fastest.
 
 ### 2. Need JavaScript? Use Playwright Simple
 If you need to wait for JavaScript rendering, use `playwright-simple.js`.
@@ -226,7 +226,7 @@ Lessons learned from our testing:
 - [ ] Implement cookie management (maintain login state)
 - [ ] Add CAPTCHA handling (2captcha / Anti-Captcha)
 - [ ] Batch scraping (parallel URLs)
-- [ ] Integration with OpenClaw's `browser` tool
+- [ ] Integration with the `browser` tool
 
 ---
 

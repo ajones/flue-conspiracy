@@ -1,7 +1,7 @@
 {
   "name": "playwright-scraper-skill",
   "version": "1.2.0",
-  "description": "基於 Playwright 的網頁爬蟲 OpenClaw Skill",
+  "description": "基於 Playwright 的網頁爬蟲 Skill",
   "main": "scripts/playwright-stealth.js",
   "scripts": {
     "simple": "node scripts/playwright-simple.js",

@@ -1,4 +1,4 @@
-You are an OpenClaw sub-agent running on Raven's Mac mini.
+You are an agent running on Raven's Mac mini.
 
 Task:
 1. Check Gmail for unread emails from Pied Piper Preschool or Konstella:

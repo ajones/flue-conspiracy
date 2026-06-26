@@ -62,4 +62,4 @@
 - [ ] CAPTCHA handling integration
 - [ ] Cookie management (maintain login state)
 - [ ] Batch scraping (parallel processing)
-- [ ] Integration with OpenClaw browser tool
+- [ ] Integration with Raven browser tool

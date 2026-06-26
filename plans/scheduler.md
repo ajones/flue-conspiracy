@@ -2,9 +2,9 @@
 
 ## Context
 
-The system currently relies on **OpenClaw**, an external daemon, to manage 74 cron/interval/one-shot jobs stored in `~/.openclaw/cron/jobs.json`. Jobs are fired by OpenClaw and delivered to agents via a shell script (`session-agent-turn.sh`). This creates a dependency on a separate process and a disconnect from the Flue dispatch system.
+The system currently relies on the scheduler, an external daemon, to manage cron/interval/one-shot jobs. Job prompts live in `prompts/jobs/` and job info is managed via the `raven jobs` CLI. Jobs are fired by the scheduler and result delivery is guided by job result preference.
 
-The goal is to bring scheduling **native** into the flue-conspiracy gateway so it's self-contained: one process, one database, one dispatch path. Jobs should survive restarts, be manageable via API and CLI, and support all existing OpenClaw schedule types plus useful additions.
+The goal is to bring scheduling **native** into the flue-conspiracy gateway so it's self-contained: one process, one database, one dispatch path. Jobs should survive restarts, be manageable via API and CLI, and support all existing the scheduler schedule types plus useful additions.
 
 ---
 
@@ -196,7 +196,7 @@ src/cli/jobs.ts         - CLI subcommands (talks to gateway via HTTP)
 - `src/cli/index.ts` — add `jobs` command routing
 - `raven.json5` — add `scheduler` config section
 
-**Not in scope:** OpenClaw migration.
+**Not in scope:** the scheduler migration.
 
 ---
 

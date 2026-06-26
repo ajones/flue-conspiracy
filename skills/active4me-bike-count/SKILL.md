@@ -85,7 +85,7 @@ When Aaron asks you to record or mark a bike count, follow this workflow:
 ### Credentials
 
 Login credentials are stored locally in:
-- **File:** `/Users/raven/.openclaw/workspace/.active4me.credentials`
+- **File:** `.active4me.credentials` in your workspace
 
 This file contains:
 - `ACTIVE4ME_EMAIL` - Login email address

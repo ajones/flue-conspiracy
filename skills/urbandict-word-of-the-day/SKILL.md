@@ -2,10 +2,6 @@
 name: urbandict-word-of-the-day
 description: Fetch the current top word from Urban Dictionary and return a one-line definition.
 metadata:
-  openclaw:
-    emoji: "📖"
-    requires:
-      bins: ["node"]
 ---
 
 # Urban Dictionary Word of the Day
@@ -19,12 +15,12 @@ Fetch the current top word from Urban Dictionary and return a short, formatted d
 
 ## Usage
 
-1. **Load the history file.** Determine your workspace directory — it follows the pattern `~/.openclaw/workspace-{agentName}` (e.g., `workspace-piedpiper`), or `~/.openclaw/workspace` for the `main` agent. You can find your agent name from the current working directory or session context. Read `{workspace}/.udwod` if it exists. Each line is formatted as `YYYY-MM-DD <Word>`. Collect all previously used words into a set (case-insensitive comparison). If the file doesn't exist yet, treat the history as empty.
+1. **Load the history file.** Read `.udwod` from your workspace if it exists. Each line is formatted as `YYYY-MM-DD <Word>`. Collect all previously used words into a set (case-insensitive comparison). If the file doesn't exist yet, treat the history as empty.
 
 2. **Fetch the Urban Dictionary homepage** using the Playwright scraper skill:
 
    ```bash
-   cd ~/.openclaw/workspace/skills/playwright-scraper-skill && node scripts/playwright-simple.js "https://www.urbandictionary.com/"
+   cd skills/playwright-scraper-skill && node scripts/playwright-simple.js "https://www.urbandictionary.com/"
    ```
 
    The script outputs a JSON blob with `title`, `url`, and `content` fields.
@@ -62,7 +58,7 @@ Fetch the current top word from Urban Dictionary and return a short, formatted d
 
 ## References
 
-- Playwright scraper skill: `~/.openclaw/workspace/skills/playwright-scraper-skill`
+- Playwright scraper skill: `skills/playwright-scraper-skill`
 - Urban Dictionary: `https://www.urbandictionary.com/`
 
 ## Guardrails

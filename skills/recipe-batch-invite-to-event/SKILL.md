@@ -3,12 +3,6 @@ name: recipe-batch-invite-to-event
 version: 1.0.0
 description: "Add a list of attendees to an existing Google Calendar event and send notifications."
 metadata:
-  openclaw:
-    category: "recipe"
-    domain: "scheduling"
-    requires:
-      bins: ["gws"]
-      skills: ["gws-calendar"]
 ---
 
 # Add Multiple Attendees to a Calendar Event

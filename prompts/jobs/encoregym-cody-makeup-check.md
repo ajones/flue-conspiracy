@@ -6,7 +6,7 @@ Use the Encore Gym skill to check Cody's current makeup situation.
 
 ## Steps
 
-1. Read `/Users/raven/.openclaw/skills/encoregym/SKILL.md` and follow it.
+1. Read `skills/encoregym/SKILL.md` and follow it.
 2. Run the skill's `get-makeups.js` workflow with the configured Encore Gym credentials.
 3. Determine:
    - how many eligible makeup classes Cody currently has

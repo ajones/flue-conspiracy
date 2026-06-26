@@ -2,10 +2,6 @@
 name: active-projects
 description: Read, update, and review Aaron's active projects list. Use when surfacing in-progress or on-deck work, suggesting next tasks, updating item statuses, or recreating the cron jobs that drive the daily check-in.
 metadata:
-  openclaw:
-    emoji: "📋"
-    requires: { bins: [] }
-    install: []
 ---
 
 # Active Projects
@@ -15,7 +11,7 @@ A lightweight personal project tracker for Aaron. The canonical file is a flat M
 ## Source of Truth
 
 ```
-~/.openclaw/workspace/ACTIVE_PROJECTS.md
+ACTIVE_PROJECTS.md in your workspace
 ```
 
 The file contains an **Agent Instructions** section at the top that defines the review and suggestion behavior. Always read that section first — it is the authoritative spec for how any agent should interact with this file.
@@ -56,60 +52,6 @@ Defined in the **Agent Instructions** section of `ACTIVE_PROJECTS.md`. Summary:
 
 Always defer to the instructions in the file itself; do not re-implement the logic from memory.
 
-## Cron Jobs
-
-### `daily-projects-check` — Daily 10am PT
-
-- **Job ID:** `7741138e-69c7-422b-a07a-6f0266b5a5d6`
-- **Schedule:** `0 10 * * *` America/Los_Angeles
-- **Prompt:** `~/.openclaw/cron/cron-prompts/daily-projects-check.md`
-- **What it does:** Reads `ACTIVE_PROJECTS.md`, follows the Agent Instructions, sends Aaron a summary + question via aaron+direct (BlueBubbles), and logs a pending reply entry in `workspace/PENDING_AGENT_REQUESTS.md`.
-
-### `haircut-reminder` — Every 3 Weeks ~12:37pm PT
-
-- **Job ID:** `b4497281-144c-4ee8-b043-0ad025d77f40`
-- **Schedule:** `every` 21 days, anchored to 2026-05-27T12:37 PDT
-- **Prompt:** `~/.openclaw/cron/cron-prompts/haircut-reminder.md`
-- **What it does:** Checks `ACTIVE_PROJECTS.md` for an existing `[in progress]` or `[on deck]` hair cut entry; if absent, adds one under `## On Deck`. Then sends Aaron a short casual reminder via aaron+direct.
-
-## Recreating the Jobs
-
-If either job needs to be rebuilt, use the `cron-creator` skill and follow its wizard. Key parameters to restore:
-
-### daily-projects-check
-
-```bash
-openclaw cron add \
-  --agent main \
-  --name daily-projects-check \
-  --session isolated \
-  --cron "0 10 * * *" \
-  --tz "America/Los_Angeles" \
-  --message 'Run `markupdown ~/.openclaw/cron/cron-prompts/daily-projects-check.md` and follow the instructions in the output step by step. Do not rely on prior context; treat that output as the source of truth for this run.' \
-  --no-deliver
-```
-
-### haircut-reminder
-
-```bash
-openclaw cron add \
-  --agent main \
-  --name haircut-reminder \
-  --session isolated \
-  --every 21d \
-  --message 'Run `markupdown ~/.openclaw/cron/cron-prompts/haircut-reminder.md` and follow the instructions in the output step by step. Do not rely on prior context; treat that output as the source of truth for this run.' \
-  --no-deliver
-```
-
-> **Note:** The `every` schedule anchors to creation time. If the haircut reminder needs to fire at a specific time of day, run the add command at that time.
-
-## Cron Prompt Files
-
-| Prompt | Purpose |
-|--------|---------|
-| `~/.openclaw/cron/cron-prompts/daily-projects-check.md` | Daily review — delegates all logic to the Agent Instructions in `ACTIVE_PROJECTS.md` |
-| `~/.openclaw/cron/cron-prompts/haircut-reminder.md` | Haircut nudge — adds a project entry and pings Aaron |
-
 ## Update Rules
 
 - Always append a dated update line (`- YYYY-MM-DD: ...`) to any item whose status or state changes.
@@ -122,4 +64,4 @@ openclaw cron add \
 - Never remove or replace the **Agent Instructions** section at the top of `ACTIVE_PROJECTS.md`.
 - Do not auto-move items to `[done]` unless Aaron explicitly says so.
 - Do not send unsolicited project updates outside of the defined cron jobs.
-- Pending reply tracking lives in `~/.openclaw/workspace/PENDING_AGENT_REQUESTS.md` — always clean up completed request blocks after processing a reply.
+- Pending reply tracking lives in `PENDING_AGENT_REQUESTS.md` in your workspace — always clean up completed request blocks after processing a reply.

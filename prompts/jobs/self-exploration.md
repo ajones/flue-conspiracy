@@ -32,11 +32,11 @@ Create an original pixel-art design for the WLED lab matrix and display it live.
 
 **The canvas:** `thelabmatrix` — an 11×37 LED matrix (11 wide, 37 tall, portrait orientation). Every LED is individually addressable. This is a real creative medium, not a status indicator.
 
-**How to draw:** Use the script at `~/.openclaw/skills/wled-control/scripts/draw_frame.py`. Read the `wled-control` SKILL.md first — it documents the coordinate system, the clear sequence, and the bitmap format. You have two options:
+**How to draw:** Use the script at `skills/wled-control/scripts/draw_frame.py`. Read the `wled-control` SKILL.md first — it documents the coordinate system, the clear sequence, and the bitmap format. You have two options:
 
 1. **Add a new named design** — write a `design_yourname(width, height)` function directly in `draw_frame.py` using the existing primitives (ellipses, arcs, circles, fills, gradients). Run it with `python3 draw_frame.py thelabmatrix yourname`.
 
-2. **Write a bitmap file** — create a `.txt` file using single characters per pixel (`.`=off, `R`=red, `G`=green, `B`=blue, `Y`=yellow, `O`=orange, `W`=white, `C`=cyan, `M`=magenta, `P`=purple, `X`=white; override any char with `colors: A=#rrggbb`). Run it with `python3 draw_frame.py thelabmatrix /path/to/file.txt`. Save the file under `~/.openclaw/skills/wled-control/scripts/examples/`.
+2. **Write a bitmap file** — create a `.txt` file using single characters per pixel (`.`=off, `R`=red, `G`=green, `B`=blue, `Y`=yellow, `O`=orange, `W`=white, `C`=cyan, `M`=magenta, `P`=purple, `X`=white; override any char with `colors: A=#rrggbb`). Run it with `python3 draw_frame.py thelabmatrix /path/to/file.txt`. Save the file under `skills/wled-control/scripts/examples/`.
 
 **Design direction:** Go beyond gradients. Every pixel can be a different color. Think about what you actually want to make:
 - Constellations, star maps, geometric mandalas

@@ -2,10 +2,6 @@
 name: blueapron
 description: Interact with Blue Apron — check upcoming orders, meals, and shipment details.
 metadata:
-  openclaw:
-    emoji: "🍽️"
-    requires:
-      bins: ["node"]
 ---
 
 # Blue Apron
@@ -19,11 +15,11 @@ Interact with Blue Apron to check upcoming orders and meal details.
 
 ## Prerequisites
 
-The Playwright scraper skill must be installed at `~/.openclaw/workspace/skills/playwright-scraper-skill`. The `get-orders.js` script uses Playwright with stealth techniques (hidden `navigator.webdriver`, realistic User-Agent) to avoid bot detection.
+The Playwright scraper skill must be installed at `skills/playwright-scraper-skill`. The `get-orders.js` script uses Playwright with stealth techniques (hidden `navigator.webdriver`, realistic User-Agent) to avoid bot detection.
 
 ## Credentials
 
-The agent must have a `.blueapron.credentials` file in its workspace directory (`~/.openclaw/workspace-{agentName}/` or `~/.openclaw/workspace/` for the `main` agent). Format:
+The agent must have a `.blueapron.credentials` file in its workspace directory (your workspace). Format:
 
 ```
 EMAIL=user@example.com
@@ -41,8 +37,8 @@ Retrieve the next shipment's meals and details.
 **CLI usage:**
 
 ```bash
-cd ~/.openclaw/workspace/skills/playwright-scraper-skill && \
-  node ~/.openclaw/skills/blueapron/scripts/get-orders.js <path-to-credentials>
+cd skills/playwright-scraper-skill && \
+  node skills/blueapron/scripts/get-orders.js <path-to-credentials>
 ```
 
 The script must be run from the playwright-scraper-skill directory so that `require('playwright')` resolves correctly.
@@ -50,8 +46,8 @@ The script must be run from the playwright-scraper-skill directory so that `requ
 **Example:**
 
 ```bash
-cd ~/.openclaw/workspace/skills/playwright-scraper-skill && \
-  node ~/.openclaw/skills/blueapron/scripts/get-orders.js ~/.openclaw/workspace/.blueapron.credentials
+cd skills/playwright-scraper-skill && \
+  node skills/blueapron/scripts/get-orders.js .blueapron.credentials
 ```
 
 **Environment variables:**
@@ -130,7 +126,7 @@ cd ~/.openclaw/workspace/skills/playwright-scraper-skill && \
 
 ## References
 
-- Playwright scraper skill: `~/.openclaw/workspace/skills/playwright-scraper-skill`
+- Playwright scraper skill: `skills/playwright-scraper-skill`
 - Blue Apron orders page: `https://www.blueapron.com/orders`
 
 ## Guardrails

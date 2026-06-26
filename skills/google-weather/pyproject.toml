@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "google-weather"
 version = "1.2.0"
-description = "Google Weather API skill for OpenClaw"
+description = "Google Weather API skill"
 authors = []
 packages = []
 

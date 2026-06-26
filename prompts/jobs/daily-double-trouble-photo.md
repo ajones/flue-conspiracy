@@ -7,7 +7,7 @@ Every time this job runs, do exactly the following steps. You MUST actually exec
 Run this command to get a random photo from the "Double Trouble" album:
 
 ```bash
-cd ~/.openclaw/skills/apple-photos && scripts/photos-album-random.sh "Double Trouble"
+cd skills/apple-photos && scripts/photos-album-random.sh "Double Trouble"
 ```
 
 The output is in the format: `Filename | Date | Type | UUID`  
@@ -27,7 +27,7 @@ Do NOT mention any group name, channel name, or delivery target in the caption.
 Run this command, substituting the UUID from Step 1 and your caption from Step 2:
 
 ```bash
-cd ~/.openclaw/skills/apple-photos && scripts/photos-send-imessage.sh "<UUID>" "Mayhem MGMT" "<caption>"
+cd skills/apple-photos && scripts/photos-send-imessage.sh "<UUID>" "Mayhem MGMT" "<caption>"
 ```
 
 This script handles exporting the photo, sending the caption text, sending the photo file, and cleanup. Text and photo arrive as separate messages (iMessage limitation).

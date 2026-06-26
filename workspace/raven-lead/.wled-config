@@ -1,0 +1,29 @@
+{
+  "weather-bar": {
+    "url": "http://192.168.86.107",
+    "ledCount": 120,
+    "maxSegments": 32,
+    "layout": "strip",
+    "defaultBrightness": 51,
+    "notes": "LED 0 = 9pm, LED 119 = 7am. Used for weather/temperature display."
+  },
+  "thelabmatrix": {
+    "url": "http://192.168.86.140",
+    "ledCount": 407,
+    "matrix": { "w": 11, "h": 37 },
+    "maxSegments": 32,
+    "virtualCoords": true,
+    "origin": "bottom-left",
+    "notes": "Physically mounted upside-down; flip y with (h-1-y) when computing indices."
+  },
+  "wled-c10030": {
+    "url": "http://wled-c10030.local",
+    "ledCount": 300,
+    "maxSegments": 32
+  },
+  "wled-effccc": {
+    "url": "http://wled-effccc.local",
+    "ledCount": 600,
+    "maxSegments": 32
+  }
+}

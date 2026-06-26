@@ -8,13 +8,6 @@ description: >
   Leo is only ever booked into "Big Kids BJJ (ages 6-8)" — never book either
   student into any other class.
 metadata:
-  openclaw:
-    emoji: "🥋"
-    requires: { bins: ["node"] }
-    install:
-      - id: npm
-        kind: npm
-        cwd: skills/epica-jujitsu
 ---
 
 # Epica Jiu Jitsu Skill

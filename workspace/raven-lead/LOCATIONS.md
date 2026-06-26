@@ -20,7 +20,7 @@ Aarons active non-tech projects are tracked in ACTIVE_PROJECTS.md
 Multi-step work plans are tracked in TASKS.md
 Structured task state and history are tracked in TASK_LOG.json
 Agent-created helper scripts should be placed in the scripts/ directory
-Cron job prompts are located in ~/.openclaw/cron/cron-prompts — all cron jobs define their prompts there.
+Job prompts are located in prompts/jobs — all cron jobs define their prompts there.
 
 ---
 

@@ -2,7 +2,7 @@
 
    - For each message ID returned, fetch metadata and content:
      ```bash
-     gws gmail users messages get --params '{"userId": "me", "id": "<message-id>", "format": "full"}' | ~/.openclaw/scripts/gws-gmail-stripper.sh
+     gws gmail users messages get --params '{"userId": "me", "id": "<message-id>", "format": "full"}' | scripts/gws-gmail-stripper.sh
      ```
    - If the stripper exits non-zero, treat it as a critical error and follow the Error Handling steps below.
    - The read/archived state of each email acts as the processing indicator.

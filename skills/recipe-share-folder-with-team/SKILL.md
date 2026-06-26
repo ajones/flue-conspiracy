@@ -3,12 +3,6 @@ name: recipe-share-folder-with-team
 version: 1.0.0
 description: "Share a Google Drive folder and all its contents with a list of collaborators."
 metadata:
-  openclaw:
-    category: "recipe"
-    domain: "productivity"
-    requires:
-      bins: ["gws"]
-      skills: ["gws-drive"]
 ---
 
 # Share a Google Drive Folder with a Team

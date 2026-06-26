@@ -37,7 +37,7 @@ For each active entity, record: entity_id, hvac mode (heat/cool/etc), and friend
 
 ### Step 2 — Write the pending request
 
-Append the following block to `~/.openclaw/workspace/PENDING_AGENT_REQUESTS.md`, substituting the bracketed placeholders with the actual date and entity list:
+Append the following block to `PENDING_AGENT_REQUESTS.md` in your workspace, substituting the bracketed placeholders with the actual date and entity list:
 
 ```
 ## AC turn-off offer — [TODAY'S DATE]
@@ -53,10 +53,10 @@ When Aaron or Ashley confirms they want units off (all or a named subset):
 - For each targeted entity, have the subagent call `ha_call_service` with domain `climate`, service `set_hvac_mode`, and `hvac_mode` `off`
 - After each call, fetch the entity state to verify it is now "off"
 - Report results: for each entity that succeeded say "✅ [friendly name] off"; for each that failed say "⚠️ Couldn't turn off [friendly name] — you'll need to do that manually"
-- Remove this block from PENDING_AGENT_REQUESTS.md after processing
+- Remove this block from `PENDING_AGENT_REQUESTS.md` in your workspace after processing
 
 When Aaron or Ashley says no / never mind:
-- Remove this block from PENDING_AGENT_REQUESTS.md
+- Remove this block from `PENDING_AGENT_REQUESTS.md` in your workspace
 ```
 
 ### Step 3 — Compose the user-facing message
