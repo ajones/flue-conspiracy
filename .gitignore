@@ -2,6 +2,7 @@ node_modules/
 dist/
 .env
 piracy.json5
+raven.json5
 bin
 data
 .data
