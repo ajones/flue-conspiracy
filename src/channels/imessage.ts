@@ -7,6 +7,7 @@ import { classifyTurn, type ConversationMessage } from '../turn/index.ts';
 import { createLogger } from '../log.ts';
 import { gatherContext, spreadContext } from '../context.ts';
 import { recordSessionCommandSpan, tryHandleSessionCommand } from '../session-commands.ts';
+import { pickWorkingOnItMessage } from '../working-on-it.ts';
 import { getImessageConfig, getImessageConversations, type ImessageConversationConfig } from '../config.ts';
 
 type ImsgChat = {
@@ -411,7 +412,13 @@ async function handleEvent(event: ImsgEvent) {
         raw: normalized.raw,
         ...spreadContext(ctx),
       },
-    }, otelContext.active());
+    }, {
+      parentContext: otelContext.active(),
+      onRootPromptStart: () => {
+        sendImessageText(convKey, pickWorkingOnItMessage())
+          .catch((err: any) => log.error('Working-on-it send failed', { error: err.message ?? String(err) }));
+      },
+    });
 
     if (reply.dispatchId) {
       span.setAttribute('raven.imessage.dispatch_id', reply.dispatchId);

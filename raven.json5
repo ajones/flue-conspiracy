@@ -26,6 +26,9 @@
   skills: {
     defaultEnabled: true,
     overrides: {
+      // gws-tasks (use native task-master instead)
+      "gws:gws-tasks": false,
+
       // gws-calendar
       "gws:gws-calendar": false,
       "gws:gws-calendar-insert": false,
@@ -41,6 +44,9 @@
 
       // homeassistant: use home-assistant subagent (typed tools) instead of shell curl
       "homeassistant": false,
+
+      // bill: sherri-lead only
+      "bill": false,
 
       // recipes
       "recipe-backup-sheet-as-csv": false,
@@ -85,6 +91,13 @@
       "recipe-sync-contacts-to-sheet": false,
       "recipe-watch-drive-changes": false,
     },
+    agents: {
+      "sherri-lead": {
+        overrides: {
+          "bill": true,
+        },
+      },
+    },
   },
 
   memory: {
@@ -109,8 +122,13 @@
     ],
     agents: {
       "raven-lead": { vaults: ["vault"] },
+      "sherri-lead": { vaults: ["vault-sherri"] },
     },
   },
+
+  // Per-agent skill overrides — take precedence over global skills.overrides
+  // agents.<agent>.overrides: enable or disable specific skills for that agent only
+  // agents.<agent>.defaultEnabled: fallback for skills not listed in overrides
 
   scheduler: {
     maxConcurrent: 5,

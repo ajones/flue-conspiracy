@@ -8,6 +8,8 @@ const log = createLogger('apple-notes');
 
 const SCRIPTS_DIR = join(findProjectRoot(), 'skills', 'raven-apple-notes', 'scripts');
 const SCRIPT_TIMEOUT_MS = 120_000;
+const SCRIPT_MAX_BUFFER = 10 * 1024 * 1024; // 10 MB
+const NOTE_CONTENT_CAP = 20_000;
 
 function formatScriptError(script: string, err: { message: string; killed?: boolean; signal?: string }, stdout: string, stderr: string): string {
   const detail = [stderr.trim(), stdout.trim()].filter(Boolean).join(' | ');
@@ -22,7 +24,7 @@ function formatScriptError(script: string, err: { message: string; killed?: bool
 function runScript(script: string, args: string[]): Promise<string> {
   const scriptPath = join(SCRIPTS_DIR, script);
   return new Promise((resolve, reject) => {
-    execFile('osascript', [scriptPath, ...args], { timeout: SCRIPT_TIMEOUT_MS }, (err, stdout, stderr) => {
+    execFile('osascript', [scriptPath, ...args], { timeout: SCRIPT_TIMEOUT_MS, maxBuffer: SCRIPT_MAX_BUFFER }, (err, stdout, stderr) => {
       if (err) {
         const message = formatScriptError(script, err, stdout, stderr);
         log.error('AppleScript failed', { script, error: err.message, stderr, stdout, killed: err.killed });
@@ -76,7 +78,10 @@ const getNoteContent = defineTool({
     log.info('apple_notes_get', { note, lines });
     const args = [note];
     if (lines) args.push(lines);
-    const result = await runScript('get-note-content.scpt', args);
+    let result = await runScript('get-note-content.scpt', args);
+    if (result.length > NOTE_CONTENT_CAP) {
+      result = result.slice(0, NOTE_CONTENT_CAP) + `\n\n[... truncated — ${result.length - NOTE_CONTENT_CAP} more chars. Use the 'lines' parameter to read a specific range.]`;
+    }
     log.info('apple_notes_get done', { note, length: result.length });
     return result;
   },

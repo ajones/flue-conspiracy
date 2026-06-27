@@ -4,6 +4,7 @@ import type { Context } from '@opentelemetry/api';
 import { parseReplyAttachments } from './telegram-attachments.ts';
 import { trackDispatchContext } from './instrumentation.ts';
 import { createLogger } from './log.ts';
+import { extractRmPaths, formatFileAudit } from './file-audit.ts';
 
 const log = createLogger('dispatch');
 
@@ -47,6 +48,7 @@ export interface CollectedReply {
 export interface DispatchAndCollectOptions {
   parentContext?: Context;
   timeoutMs?: number;
+  onRootPromptStart?: () => void;
 }
 
 export function dispatchAndCollect(
@@ -73,6 +75,9 @@ export function dispatchAndCollect(
       reject(new Error(msg));
     }, timeoutMs);
 
+    // last-write-wins: M for write/edit, D for rm — key is path, value is latest label
+    const fileOps = new Map<string, 'M' | 'D'>();
+
     dispatch(request).then((receipt) => {
       log.debug('Dispatch admitted', { agent, instanceId, dispatchId: receipt.dispatchId });
       if (opts.parentContext && receipt.dispatchId) {
@@ -84,7 +89,9 @@ export function dispatchAndCollect(
       const finish = (rawText: string) => {
         clearTimeout(timeout);
         unsub?.();
-        const { text, imagePaths } = parseReplyAttachments(rawText);
+        const { text: replyText, imagePaths } = parseReplyAttachments(rawText);
+        const diff = formatFileAudit(fileOps);
+        const text = diff ? `${replyText}\n\n${diff}` : replyText;
         log.info('Dispatch complete', {
           agent,
           instanceId,
@@ -98,8 +105,23 @@ export function dispatchAndCollect(
       unsub = observe((event) => {
         if (!matchesDispatch(event, receipt.dispatchId, instanceId)) return;
 
+        if (event.type === 'tool_start') {
+          const { toolName, args } = event as { toolName: string; args?: any };
+          if (toolName === 'write' || toolName === 'edit') {
+            const path = typeof args?.path === 'string' ? args.path : undefined;
+            if (path) fileOps.set(path, 'M');
+          } else if (toolName === 'bash') {
+            const command = typeof args?.command === 'string' ? args.command : undefined;
+            if (command) {
+              for (const path of extractRmPaths(command)) fileOps.set(path, 'D');
+            }
+          }
+          return;
+        }
+
         if (event.type === 'operation_start' && event.operationKind === 'prompt' && !rootPromptOperationId) {
           rootPromptOperationId = event.operationId;
+          opts.onRootPromptStart?.();
           return;
         }
 

@@ -62,7 +62,7 @@ export async function classifySkills(
   }
 
   const catalog = [...skills.values()]
-    .filter((s) => isSkillEnabled(s.name))
+    .filter((s) => isSkillEnabled(s.name, agentName))
     .map((s) => ({
       name: s.name,
       description: s.description,
@@ -182,7 +182,7 @@ export async function classifySkills(
       const enabled: DiscoveredSkill[] = [];
       const disabled: DiscoveredSkill[] = [];
       for (const skill of matched) {
-        if (isSkillEnabled(skill.name)) {
+        if (isSkillEnabled(skill.name, agentName)) {
           enabled.push(skill);
         } else {
           disabled.push(skill);

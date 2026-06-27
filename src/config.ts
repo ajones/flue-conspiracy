@@ -24,9 +24,15 @@ export interface ImessageConversationConfig {
   name?: string;
 }
 
+export interface AgentSkillsConfig {
+  defaultEnabled?: boolean;
+  overrides?: Record<string, boolean>;
+}
+
 export interface SkillsConfig {
   defaultEnabled?: boolean;
   overrides?: Record<string, boolean>;
+  agents?: Record<string, AgentSkillsConfig>;
 }
 
 export interface SchedulerConfig {
@@ -119,8 +125,17 @@ export function getSkillsConfig(): SkillsConfig {
   return config.skills ?? {};
 }
 
-export function isSkillEnabled(name: string): boolean {
-  const { defaultEnabled = true, overrides = {} } = getSkillsConfig();
+export function isSkillEnabled(name: string, agentName?: string): boolean {
+  const { defaultEnabled = true, overrides = {}, agents = {} } = getSkillsConfig();
+  if (agentName) {
+    const agentCfg = agents[agentName];
+    if (agentCfg?.overrides && name in agentCfg.overrides) {
+      return agentCfg.overrides[name]!;
+    }
+    if (agentCfg?.defaultEnabled !== undefined) {
+      return agentCfg.defaultEnabled;
+    }
+  }
   return overrides[name] ?? defaultEnabled;
 }
 

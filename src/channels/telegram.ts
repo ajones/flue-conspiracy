@@ -10,6 +10,7 @@ import { recordSessionCommandSpan, tryHandleSessionCommand } from '../session-co
 import { validateImagePaths } from '../telegram-attachments.ts';
 import { TELEGRAM_PARSE_MODE, toTelegramMarkdown } from '../telegram-format.ts';
 import { createLogger } from '../log.ts';
+import { pickWorkingOnItMessage } from '../working-on-it.ts';
 
 export interface TelegramBot {
   config: TelegramBotConfig;
@@ -184,7 +185,13 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
               chatId: incoming.chat.id,
               ...spreadContext(ctx),
             },
-          }, otelContext.active());
+          }, {
+            parentContext: otelContext.active(),
+            onRootPromptStart: () => {
+              sendFormattedMessage(client, conversation.chatId, pickWorkingOnItMessage(), sendOptions(conversation))
+                .catch((err) => tgLog.error('Working-on-it send failed', { error: (err as Error).message }));
+            },
+          });
           if (reply.text || reply.imagePaths.length > 0) {
             await sendReplyToConversation(client, conversation, reply);
             if (reply.imagePaths.length > 0) {
@@ -200,7 +207,8 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
           tgLog.info('Callback query', { updateId: update.update_id, data: query.data });
           await client.answerCallbackQuery(query.id);
           if (!query.message) return;
-          const cbConvKey = channel.conversationKey(conversationFromMessage(query.message));
+          const cbConversation = conversationFromMessage(query.message);
+          const cbConvKey = channel.conversationKey(cbConversation);
           trackAgentInstance(cbConvKey, bot.agent);
           span.addEvent('callback.received', {
             'raven.telegram.callback_data': query.data ?? '',
@@ -220,9 +228,14 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
                 ...(query.from.username ? { username: query.from.username } : {}),
               } : undefined,
             },
-          }, otelContext.active());
-          if (query.message && (cbReply.text || cbReply.imagePaths.length > 0)) {
-            const cbConversation = conversationFromMessage(query.message);
+          }, {
+            parentContext: otelContext.active(),
+            onRootPromptStart: () => {
+              sendFormattedMessage(client, cbConversation.chatId, pickWorkingOnItMessage(), sendOptions(cbConversation))
+                .catch((err) => tgLog.error('Working-on-it send failed', { error: (err as Error).message }));
+            },
+          });
+          if (cbReply.text || cbReply.imagePaths.length > 0) {
             await sendReplyToConversation(client, cbConversation, cbReply);
           }
           span.setStatus({ code: SpanStatusCode.OK });
