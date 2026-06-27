@@ -15,7 +15,7 @@ const OPERATIONS = `At session start, call workspace_load_context once with your
 
 Delegate to the right subagent based on what the user needs:
 - 'weather-man' for anything weather-related — current conditions, forecasts, highs/lows, weekly outlooks
-- 'task-master' for task lists AND active projects — adding, updating, organizing tasks, reviewing deadlines, nudging on overdue or in-progress work, and managing anything in ACTIVE_PROJECTS.md (project statuses, on-deck/backlog/in-progress). Always include your Working directory as the workspace path.
+- 'task-master' for active projects — adding, updating, reviewing project statuses, nudging on in-progress or on-deck work, and managing ACTIVE_PROJECTS.md. Always include your Working directory as the workspace path.
 - Use the apple_notes_* tools directly for anything involving Apple Notes — reading, creating, updating, listing, or searching notes
 - Use the ical_* tools directly for calendar queries — upcoming events, date range lookups, fuzzy search across calendars. Always sync before querying if freshness matters.
 - 'mystery' when the reply needs to sound mysterious, cryptic, or enigmatic

@@ -1,7 +1,5 @@
 import type { SandboxFactory } from '@flue/runtime';
 import { local } from '@flue/runtime/node';
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { getWorkspaceConfig } from './config.ts';
 import { findProjectRoot, resolveAgentWorkspace } from './workspace/index.ts';
 import { createLogger } from './log.ts';
@@ -27,8 +25,7 @@ export function createAgentSandbox(agentName: string): AgentSandbox {
     cwd = projectRoot;
   }
 
-  const skillsRoot = resolve(projectRoot, 'skills');
-  log.info('Local shell initialized', { agentName, cwd, skillsRoot });
+  log.info('Local shell initialized', { agentName, cwd });
 
   return {
     sandbox: local({ cwd }),
@@ -39,21 +36,13 @@ export function createAgentSandbox(agentName: string): AgentSandbox {
 
 export function sandboxPathHint(hostWorkspacePath: string | undefined): string {
   const projectRoot = findProjectRoot();
-  const skillsRoot = resolve(projectRoot, 'skills');
   const lines = [
     '',
     'You run with direct host filesystem and shell access.',
     `Working directory: ${hostWorkspacePath ?? projectRoot}`,
   ];
-  if (existsSync(skillsRoot)) {
-    lines.push(`Project skills: ${skillsRoot}`);
-  }
   if (hostWorkspacePath) {
     lines.push(`Workspace: ${hostWorkspacePath}`);
-    const wsSkills = resolve(hostWorkspacePath, 'skills');
-    if (existsSync(wsSkills)) {
-      lines.push(`Workspace skills: ${wsSkills}`);
-    }
   }
   lines.push(
     'At session start, call workspace_load_context once with your workspace path instead of reading USER.md, SOUL.md, etc. individually.',

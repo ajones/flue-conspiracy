@@ -249,10 +249,10 @@ Projects can have optional property lines directly below the status line (before
     - 2026-05-13: Aaron mounted it back on the wall; now testing whether the new mounting mechanism holds.
     - 2026-05-14: Aaron said it seems to be working and to mark it complete for now.
 
-- [in progress] Schedule U-Haul trailer to Colorado
-  - check_after: 2026-06-23
+- [done] Schedule U-Haul trailer to Colorado
   - Updates:
     - 2026-06-22: Aaron wants this tracked as in progress so he can get the U-Haul trailer to Colorado scheduled.
+    - 2026-06-27: Aaron said the U-Haul trailer schedule is complete.
 
 - [in progress] Teacher P S cozy corner (preschool bookcase + reading area)
   - check_after: 2026-06-25
