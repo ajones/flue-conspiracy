@@ -6,7 +6,7 @@ import { execFile } from 'node:child_process';
 import { readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createAgentSandbox } from '../sandbox.ts';
+import { createAgentSandbox } from '../agent-system-context.ts';
 
 const log = createLogger('home-assistant');
 

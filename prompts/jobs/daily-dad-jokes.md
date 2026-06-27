@@ -5,7 +5,6 @@ Every time this job runs, follow the `dad-jokes` skill to fetch a new dad joke a
 ## Steps
 
 1. **Use the dad-jokes skill**
-   - Skill location: `skills/dad-joke/SKILL.md`.
    - Follow its workflow to:
      - Locate and use the shared dad joke log at:
        `~/Library/Mobile Documents/com~apple~CloudDocs/RavenClaw-Collab/dad-joke-log.md`

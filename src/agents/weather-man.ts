@@ -3,7 +3,7 @@ import { createContextGatheringRoute } from '../agent-route.ts';
 import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { loadSkills } from '../skills/index.ts';
-import { createAgentSandbox } from '../sandbox.ts';
+import { createAgentSandbox } from '../agent-system-context.ts';
 
 export const route = createContextGatheringRoute('weather-man');
 

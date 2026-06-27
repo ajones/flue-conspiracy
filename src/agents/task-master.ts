@@ -2,7 +2,7 @@ import { createAgent, defineAgentProfile } from '@flue/runtime';
 import { createContextGatheringRoute } from '../agent-route.ts';
 import { workspaceContextTools } from '../tools/workspace-context.ts';
 import { withWorkspaceContext } from '../workspace/index.ts';
-import { createAgentSandbox, sandboxPathHint } from '../sandbox.ts';
+import { createAgentSandbox, sandboxPathHint } from '../agent-system-context.ts';
 
 export const route = createContextGatheringRoute('task-master');
 

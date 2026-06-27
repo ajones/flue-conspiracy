@@ -46,6 +46,7 @@ export function sandboxPathHint(hostWorkspacePath: string | undefined): string {
   }
   lines.push(
     'At session start, call workspace_load_context once with your workspace path instead of reading USER.md, SOUL.md, etc. individually.',
+    'Never guess or hardcode skill paths. Use skills_find or skills_list to get the absolute path of any skill before reading it.',
   );
   return lines.join('\n');
 }

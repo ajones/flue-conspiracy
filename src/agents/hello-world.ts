@@ -1,6 +1,6 @@
 import { createAgent, defineAgentProfile } from '@flue/runtime';
 import { createContextGatheringRoute } from '../agent-route.ts';
-import { createAgentSandbox } from '../sandbox.ts';
+import { createAgentSandbox } from '../agent-system-context.ts';
 
 export const route = createContextGatheringRoute('hello-world');
 
