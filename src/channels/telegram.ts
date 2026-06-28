@@ -103,25 +103,32 @@ async function sendFormattedMediaGroup(
   }
 }
 
+function mergeTextAndDiff(reply: Pick<CollectedReply, 'text' | 'diff'>): string {
+  if (!reply.diff) return reply.text;
+  const block = `\`\`\`\n${reply.diff}\n\`\`\``;
+  return reply.text ? `${reply.text}\n\n${block}` : block;
+}
+
 async function sendReplyToConversation(
   client: Api,
   ref: TelegramConversationRef,
-  reply: Pick<CollectedReply, 'text' | 'imagePaths'>,
+  reply: Pick<CollectedReply, 'text' | 'diff' | 'imagePaths'>,
 ): Promise<void> {
   const opts = sendOptions(ref);
   const paths = reply.imagePaths.length > 0 ? validateImagePaths(reply.imagePaths) : [];
+  const text = mergeTextAndDiff(reply);
 
   if (paths.length === 0) {
-    if (reply.text) await sendFormattedMessage(client, ref.chatId, reply.text, opts);
+    if (text) await sendFormattedMessage(client, ref.chatId, text, opts);
     return;
   }
 
   if (paths.length === 1) {
-    await sendFormattedPhoto(client, ref.chatId, new InputFile(paths[0]), reply.text || undefined, opts);
+    await sendFormattedPhoto(client, ref.chatId, new InputFile(paths[0]), text || undefined, opts);
     return;
   }
 
-  await sendFormattedMediaGroup(client, ref.chatId, paths, reply.text || undefined, opts);
+  await sendFormattedMediaGroup(client, ref.chatId, paths, text || undefined, opts);
 }
 
 function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChannel) {
@@ -193,10 +200,23 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
             },
           });
           if (reply.text || reply.imagePaths.length > 0) {
-            await sendReplyToConversation(client, conversation, reply);
-            if (reply.imagePaths.length > 0) {
-              span.addEvent('reply.images_sent', { 'raven.telegram.image_count': reply.imagePaths.length });
-            }
+            await tracer.startActiveSpan('telegram.send_reply', {
+              attributes: {
+                'raven.telegram.text_length': reply.text.length,
+                'raven.telegram.image_count': reply.imagePaths.length,
+                'raven.telegram.chat_id': conversation.chatId,
+              },
+            }, async (replySpan) => {
+              try {
+                await sendReplyToConversation(client, conversation, reply);
+                replySpan.setStatus({ code: SpanStatusCode.OK });
+              } catch (err) {
+                replySpan.setStatus({ code: SpanStatusCode.ERROR, message: (err as Error).message });
+                throw err;
+              } finally {
+                replySpan.end();
+              }
+            });
           }
           span.setStatus({ code: SpanStatusCode.OK });
           return;
@@ -236,7 +256,23 @@ function handleUpdate(bot: TelegramBotConfig, client: Api, channel: TelegramChan
             },
           });
           if (cbReply.text || cbReply.imagePaths.length > 0) {
-            await sendReplyToConversation(client, cbConversation, cbReply);
+            await tracer.startActiveSpan('telegram.send_reply', {
+              attributes: {
+                'raven.telegram.text_length': cbReply.text.length,
+                'raven.telegram.image_count': cbReply.imagePaths.length,
+                'raven.telegram.chat_id': cbConversation.chatId,
+              },
+            }, async (replySpan) => {
+              try {
+                await sendReplyToConversation(client, cbConversation, cbReply);
+                replySpan.setStatus({ code: SpanStatusCode.OK });
+              } catch (err) {
+                replySpan.setStatus({ code: SpanStatusCode.ERROR, message: (err as Error).message });
+                throw err;
+              } finally {
+                replySpan.end();
+              }
+            });
           }
           span.setStatus({ code: SpanStatusCode.OK });
         }
@@ -307,7 +343,7 @@ export const channel: TelegramChannel = defaultChannel;
 
 export async function sendTelegramReply(
   id: string,
-  reply: Pick<CollectedReply, 'text' | 'imagePaths'>,
+  reply: Pick<CollectedReply, 'text' | 'diff' | 'imagePaths'>,
 ): Promise<void> {
   if (bots.length === 0) throw new Error('No telegram bots configured');
   const ref = bots[0].channel.parseConversationKey(id);
@@ -315,7 +351,7 @@ export async function sendTelegramReply(
 }
 
 export async function sendTelegramText(id: string, text: string): Promise<void> {
-  await sendTelegramReply(id, { text, imagePaths: [] });
+  await sendTelegramReply(id, { text, diff: '', imagePaths: [] });
 }
 
 export function startPolling() {

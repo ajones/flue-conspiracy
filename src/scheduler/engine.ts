@@ -343,10 +343,11 @@ export class Scheduler {
               }, { parentContext: otelContext.active() });
 
               const imagePaths = [...jobResult.imagePaths, ...deliveryReply.imagePaths];
-              if (deliveryReply.text || imagePaths.length > 0) {
-                await sendToConversation(job.target, deliveryReply.text, { imagePaths });
+              const deliveryText = deliveryReply.diff ? `${deliveryReply.text}\n\n${deliveryReply.diff}` : deliveryReply.text;
+              if (deliveryText || imagePaths.length > 0) {
+                await sendToConversation(job.target, deliveryText, { imagePaths });
                 deliverSpan.addEvent('delivered', {
-                  'raven.job.delivery_length': deliveryReply.text.length,
+                  'raven.job.delivery_length': deliveryText.length,
                   'raven.job.delivery_image_count': imagePaths.length,
                 });
               }

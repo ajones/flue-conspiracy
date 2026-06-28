@@ -339,6 +339,13 @@ async function handleEvent(event: ImsgEvent) {
       text: messageText,
     });
 
+    if (normalized.isFromMe) {
+      span.setAttribute('raven.imessage.skipped', true);
+      span.setAttribute('raven.imessage.skip_reason', 'from_me');
+      span.setStatus({ code: SpanStatusCode.OK });
+      return;
+    }
+
     if (!normalized.isFromMe && isGroup && messageText) {
       const participants = (group?.participants ?? chat?.participants ?? []).concat(AGENT_DISPLAY_NAME);
       const spanCtx = trace.setSpan(otelContext.active(), span);
@@ -385,6 +392,9 @@ async function handleEvent(event: ImsgEvent) {
       }
     }
 
+    sendImessageText(convKey, pickWorkingOnItMessage())
+      .catch((err: any) => log.error('Working-on-it send failed', { error: err.message ?? String(err) }));
+
     const ctx = await gatherContext({ text: normalized.text ?? '', agent: configuredAgent, conversationKey: convKey });
 
     span.addEvent('dispatching', {
@@ -414,18 +424,15 @@ async function handleEvent(event: ImsgEvent) {
       },
     }, {
       parentContext: otelContext.active(),
-      onRootPromptStart: () => {
-        sendImessageText(convKey, pickWorkingOnItMessage())
-          .catch((err: any) => log.error('Working-on-it send failed', { error: err.message ?? String(err) }));
-      },
     });
 
     if (reply.dispatchId) {
       span.setAttribute('raven.imessage.dispatch_id', reply.dispatchId);
     }
-    if (reply.text) {
-      await sendImessageText(convKey, reply.text);
-      pushHistory(chatId, { role: 'assistant', name: AGENT_DISPLAY_NAME, text: reply.text });
+    const replyText = reply.diff ? `${reply.text}\n\n${reply.diff}` : reply.text;
+    if (replyText) {
+      await sendImessageText(convKey, replyText);
+      pushHistory(chatId, { role: 'assistant', name: AGENT_DISPLAY_NAME, text: replyText });
       span.addEvent('reply.sent', {
         'raven.imessage.reply_length': reply.text.length,
       });
@@ -496,13 +503,24 @@ export async function startWatching() {
     return;
   }
 
-  await loadAssignments();
+  const tryStart = async (attempt: number): Promise<void> => {
+    try {
+      await loadAssignments();
+    } catch (err: any) {
+      const delay = Math.min(5000 * attempt, 60_000);
+      log.error('Failed to resolve imessage conversations; will retry', { error: err.message ?? String(err), attempt, delayMs: delay });
+      await new Promise((r) => setTimeout(r, delay));
+      return tryStart(attempt + 1);
+    }
 
-  loadChats().catch((err: any) => {
-    log.error('Failed to preload imsg chats', { error: err.message ?? String(err) });
-  });
+    loadChats().catch((err: any) => {
+      log.error('Failed to preload imsg chats', { error: err.message ?? String(err) });
+    });
 
-  spawnWatch();
+    spawnWatch();
+  };
+
+  await tryStart(1);
 }
 
 export async function resolveImessageConversation(id: string): Promise<ImessageConversationRef | null> {
@@ -527,7 +545,7 @@ export async function sendImessageText(id: string, text: string): Promise<{ mess
     throw new Error(`No imessage agent assignment found for chat id ${chatId}`);
   }
 
-  const args = ['send', ...getDbArgs(), '--chat-id', String(chatId), '--text', text, '--json'];
+  const args = ['send', ...getDbArgs(), '--chat-id', String(chatId), '--text', text];
   const messages = await runImsg<{ messageId?: number; id?: number }>(args);
   const message = messages[0];
   return { messageId: message?.messageId ?? message?.id };

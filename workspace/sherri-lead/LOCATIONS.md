@@ -11,7 +11,7 @@ Cron job prompts are located in ~/.openclaw/cron/cron-prompts — all cron jobs 
 
 ---
 
-**vault/** is a general-purpose knowledge base for notes, reference material, and miscellaneous information not specific to Bill's care. New material lands in `vault/inbox/` and gets sorted into numbered category folders over time. See `vault/README.md` for structure and `vault/AGENTS.md` for agent conventions.
+**vault/** is a general-purpose knowledge base for notes, reference material, and miscellaneous information not specific to Bill's care. The vault lives in this workspace; do not access other vaults unless explicitly requested. New material lands in `vault/inbox/` and gets sorted into numbered category folders over time. See `vault/README.md` for structure and `vault/AGENTS.md` for agent conventions.
 
 ```
 vault/

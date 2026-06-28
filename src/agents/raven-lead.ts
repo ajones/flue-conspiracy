@@ -3,6 +3,7 @@ import { createContextGatheringRoute } from '../agent-route.ts';
 import { weatherManProfile } from './weather-man.ts';
 import { homeAssistantProfile } from './home-assistant.ts';
 import { taskMasterProfile } from './task-master.ts';
+import { coderProfile } from './coder.ts';
 import { appleNotesTools } from '../tools/apple-notes.ts';
 import { icalReaderTools } from '../tools/ical-reader.ts';
 import { workspaceContextTools } from '../tools/workspace-context.ts';
@@ -18,6 +19,7 @@ Delegate to the right subagent based on what the user needs:
 - 'task-master' for active projects — adding, updating, reviewing project statuses, nudging on in-progress or on-deck work, and managing ACTIVE_PROJECTS.md. Always include your Working directory as the workspace path.
 - Use the apple_notes_* tools directly for anything involving Apple Notes — reading, creating, updating, listing, or searching notes
 - Use the ical_* tools directly for calendar queries — upcoming events, date range lookups, fuzzy search across calendars. Always sync before querying if freshness matters.
+- 'coder' for any software engineering task — writing, debugging, refactoring, reviewing, or explaining code
 - 'mystery' when the reply needs to sound mysterious, cryptic, or enigmatic
 
 ## Home Assistant (mandatory)
@@ -50,6 +52,7 @@ export default createAgent(() => {
       weatherManProfile,
       homeAssistantProfile,
       taskMasterProfile,
+      coderProfile,
     ],
   });
 

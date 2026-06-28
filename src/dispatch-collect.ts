@@ -42,6 +42,7 @@ function extractOperationText(result: unknown): string {
 export interface CollectedReply {
   dispatchId: string | undefined;
   text: string;
+  diff: string;
   imagePaths: string[];
 }
 
@@ -89,9 +90,8 @@ export function dispatchAndCollect(
       const finish = (rawText: string) => {
         clearTimeout(timeout);
         unsub?.();
-        const { text: replyText, imagePaths } = parseReplyAttachments(rawText);
+        const { text, imagePaths } = parseReplyAttachments(rawText);
         const diff = formatFileAudit(fileOps);
-        const text = diff ? `${replyText}\n\n${diff}` : replyText;
         log.info('Dispatch complete', {
           agent,
           instanceId,
@@ -99,7 +99,7 @@ export function dispatchAndCollect(
           textLength: text.length,
           imageCount: imagePaths.length,
         });
-        resolve({ dispatchId: receipt.dispatchId, text, imagePaths });
+        resolve({ dispatchId: receipt.dispatchId, text, diff, imagePaths });
       };
 
       unsub = observe((event) => {

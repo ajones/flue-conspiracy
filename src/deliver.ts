@@ -46,7 +46,7 @@ export async function sendToConversation(
       },
     }, async (span) => {
       try {
-        await sendTelegramReply(target, { text, imagePaths });
+        await sendTelegramReply(target, { text, diff: '', imagePaths });
         span.setStatus({ code: SpanStatusCode.OK });
       } catch (err) {
         span.setStatus({ code: SpanStatusCode.ERROR, message: (err as Error).message });
