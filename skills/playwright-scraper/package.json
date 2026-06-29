@@ -1,5 +1,5 @@
 {
-  "name": "playwright-scraper-skill",
+  "name": "playwright-scraper",
   "version": "1.2.0",
   "description": "基於 Playwright 的網頁爬蟲 Skill",
   "main": "scripts/playwright-stealth.js",

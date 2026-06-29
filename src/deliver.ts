@@ -16,15 +16,17 @@ export async function sendToConversation(
   options?: DeliveryOptions,
 ): Promise<void> {
   if (target.startsWith('imessage:chat:')) {
+    const imagePaths = options?.imagePaths ?? [];
     await tracer.startActiveSpan('deliver.imessage', {
       attributes: {
         'raven.deliver.channel': 'imessage',
         'raven.deliver.target': target,
         'raven.deliver.text_length': text.length,
+        'raven.deliver.image_count': imagePaths.length,
       },
     }, async (span) => {
       try {
-        await sendImessageText(target, text);
+        await sendImessageText(target, text, imagePaths.length ? imagePaths : undefined);
         span.setStatus({ code: SpanStatusCode.OK });
       } catch (err) {
         span.setStatus({ code: SpanStatusCode.ERROR, message: (err as Error).message });

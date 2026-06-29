@@ -20,7 +20,7 @@ Fetch the current top word from Urban Dictionary and return a short, formatted d
 2. **Fetch the Urban Dictionary homepage** using the Playwright scraper skill:
 
    ```bash
-   cd skills/playwright-scraper-skill && node scripts/playwright-simple.js "https://www.urbandictionary.com/"
+   cd skills/playwright-scraper && node scripts/playwright-simple.js "https://www.urbandictionary.com/"
    ```
 
    The script outputs a JSON blob with `title`, `url`, and `content` fields.
@@ -58,7 +58,7 @@ Fetch the current top word from Urban Dictionary and return a short, formatted d
 
 ## References
 
-- Playwright scraper skill: `skills/playwright-scraper-skill`
+- Playwright scraper skill: `skills/playwright-scraper`
 - Urban Dictionary: `https://www.urbandictionary.com/`
 
 ## Guardrails

@@ -16,7 +16,7 @@ Check the Parkmead Walk N Roll SignUpGenius page, find the next upcoming event d
 ## Usage
 
 1. Use the Playwright scraper skill to load the dynamic content for the signup page.
-   - Change directory to the skill: `skills/playwright-scraper-skill`.
+   - Change directory to the skill: `skills/playwright-scraper`.
    - Run the simple Playwright script:
      - Command: `node scripts/playwright-simple.js "https://www.signupgenius.com/go/4090D4EAFAF29A2FB6-61526314-parkmead#/"`
    - Before reading the schedule, scroll all the way to the bottom of the rendered signup page so the full table is loaded.
@@ -59,7 +59,7 @@ Check the Parkmead Walk N Roll SignUpGenius page, find the next upcoming event d
 
 ## References
 
-- Playwright scraper skill: `skills/playwright-scraper-skill`
+- Playwright scraper skill: `skills/playwright-scraper`
 - SignUpGenius page: `https://www.signupgenius.com/go/4090D4EAFAF29A2FB6-61526314-parkmead#/`
 
 ## Guardrails

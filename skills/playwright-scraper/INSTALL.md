@@ -6,12 +6,12 @@
 
 ```bash
 # Method 1: Using git clone (if public repo)
-git clone https://github.com/waisimon/playwright-scraper-skill.git
-cd playwright-scraper-skill
+git clone https://github.com/waisimon/playwright-scraper.git
+cd playwright-scraper
 
 # Method 2: Download ZIP and extract
 # After downloading, enter the directory
-cd playwright-scraper-skill
+cd playwright-scraper
 ```
 
 ### 2. Install Dependencies
@@ -43,7 +43,7 @@ node scripts/playwright-stealth.js https://example.com
 If you're using Raven, you can place this skill in the skills directory:
 
 ```bash
-cp -r playwright-scraper-skill skills/
+cp -r playwright-scraper skills/
 
 # Then you can invoke it in Raven
 ```

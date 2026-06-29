@@ -112,7 +112,7 @@ USER_AGENT="Mozilla/5.0 ..." node scripts/playwright-stealth.js <URL>
 ## 📁 File Structure
 
 ```
-playwright-scraper-skill/
+playwright-scraper/
 ├── scripts/
 │   ├── playwright-simple.js       # Simple mode
 │   └── playwright-stealth.js      # Stealth mode ⭐

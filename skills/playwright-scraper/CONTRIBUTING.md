@@ -1,12 +1,12 @@
 # Contributing Guide
 
-Thank you for considering contributing to playwright-scraper-skill!
+Thank you for considering contributing to playwright-scraper!
 
 ## 🐛 Reporting Issues
 
 If you find a bug or have a feature suggestion:
 
-1. Check [Issues](https://github.com/waisimon/playwright-scraper-skill/issues) to see if it already exists
+1. Check [Issues](https://github.com/waisimon/playwright-scraper/issues) to see if it already exists
 2. If not, create a new Issue
 3. Provide the following information:
    - Problem description
@@ -29,8 +29,8 @@ If you find a bug or have a feature suggestion:
 
 ```bash
 # Fork the repo and clone
-git clone https://github.com/YOUR_USERNAME/playwright-scraper-skill.git
-cd playwright-scraper-skill
+git clone https://github.com/YOUR_USERNAME/playwright-scraper.git
+cd playwright-scraper
 
 # Install dependencies
 npm install

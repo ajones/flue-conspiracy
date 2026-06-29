@@ -4,7 +4,7 @@
 
 ### 🔄 Major Changes
 
-- **Project Renamed** — `web-scraper` → `playwright-scraper-skill`
+- **Project Renamed** — `web-scraper` → `playwright-scraper`
 - Updated all documentation and links
 - Updated GitHub repo name
 - **Bilingual Documentation** — All docs now in English (with Chinese README available)

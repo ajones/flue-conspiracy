@@ -110,7 +110,7 @@ USER_AGENT="Mozilla/5.0 ..." node scripts/playwright-stealth.js <URL>
 ## 📁 檔案結構
 
 ```
-playwright-scraper-skill/
+playwright-scraper/
 ├── scripts/
 │   ├── playwright-simple.js       # 簡單版
 │   └── playwright-stealth.js      # Stealth 版 ⭐

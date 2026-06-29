@@ -258,6 +258,10 @@ Projects can have optional property lines directly below the status line (before
   - check_after: 2026-06-25
   - Updates:
     - 2026-05-14: Added per Aaron's request.
+
+- [in progress] Handle iMessage reactions
+  - Updates:
+    - 2026-06-29: Added per Aaron's request to track handling iMessage reactions.
     - 2026-05-14: Project is in the design phase.
     - 2026-05-15: Needs another CAD round before going to get materials; next tiny step is to finish that pass.
     - 2026-05-16: Nothing changed; still in design and blocked on another CAD pass before materials.

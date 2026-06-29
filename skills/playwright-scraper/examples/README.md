@@ -87,7 +87,7 @@ node scripts/playwright-stealth.js <URL>
 
 ```bash
 #!/bin/bash
-# Run from playwright-scraper-skill directory
+# Run from playwright-scraper directory
 
 URL="https://example.com"
 OUTPUT_FILE="result.json"

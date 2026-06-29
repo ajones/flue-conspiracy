@@ -1,5 +1,5 @@
 ---
-name: playwright-scraper-skill
+name: playwright-scraper
 description: >
   REQUIRED for any web scraping task. You MUST use this skill and its Playwright scripts
   instead of curl/wget/fetch when scraping websites. Handles anti-bot protection, JavaScript
@@ -29,7 +29,7 @@ A Playwright-based web scraping agent skill with anti-bot protection. Choose the
 ## 📦 Installation
 
 ```bash
-cd playwright-scraper-skill
+cd playwright-scraper
 npm install
 npx playwright install chromium
 ```
