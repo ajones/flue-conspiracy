@@ -3,7 +3,7 @@
 This cron asks a question, so it must use the pending-request pattern.
 
 Before you deliver the question:
-1. Ensure `<your workspace>/PENDING_AGENT_REQUESTS.md` exists with the header `# Pending Agent Requests`.
+1. If `<your workspace>/PENDING_AGENT_REQUESTS.md` does not exist, create it with only the header `# Pending Agent Requests`. If it already exists, do not add or re-add the header — only append request blocks below whatever content is already there.
 2. Append a new request block for this question containing:
    - the exact question you are asking
    - instructions that the next substantive reply in this thread should be treated as the answer

@@ -7,6 +7,7 @@
 
 UUID="$1"
 OUTPUT="${2:-/tmp/photo_export.jpg}"
+OUTPUT="${OUTPUT/#\~/$HOME}"
 
 if [ -z "$UUID" ]; then
     echo "Usage: photos-export.sh <uuid> [output_path]" >&2

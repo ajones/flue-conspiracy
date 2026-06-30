@@ -5,7 +5,7 @@ Context:
 
 Instructions:
 1. Use the Playwright scraper skill to load the dynamic content for the signup page.
-   - Change directory to the skill: `skills/playwright-scraper-skill`.
+   - Change directory to the skill: `skills/playwright-scraper`.
    - Run the simple Playwright script:
      - Command: `node scripts/playwright-simple.js "https://www.signupgenius.com/go/4090D4EAFAF29A2FB6-61526314-parkmead#/"`
    - Before reading the schedule, scroll all the way to the bottom of the rendered signup page so the full table is loaded.

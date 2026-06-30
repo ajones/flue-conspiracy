@@ -1,8 +1,17 @@
 import { open, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { loadConfig } from '../config.ts';
 
-const DEFAULT_SERVER = 'http://localhost:3583';
+function getDefaultServer(): string {
+  try {
+    const { port } = loadConfig();
+    return `http://localhost:${port ?? 3583}`;
+  } catch {
+    return 'http://localhost:3583';
+  }
+}
+
 const LOG_DIR = join(homedir(), '.raven', 'logs');
 
 let useColor = !!process.stdout.isTTY || process.env.FORCE_COLOR === '1';
@@ -19,10 +28,13 @@ const BLUE = '\x1b[34m';
 
 const STATUS_COLORS: Record<string, string> = {
   completed: GREEN,
+  ok: GREEN,
   running: CYAN,
+  active: CYAN,
   pending: YELLOW,
   failed: RED,
   error: RED,
+  errored: RED,
   cancelled: DIM,
 };
 
@@ -61,10 +73,14 @@ function c(code: string, text: string): string {
 interface Run {
   runId?: string;
   id?: string;
+  workflowName?: string;
+  jobName?: string;
   agentName?: string;
   status?: string;
-  createdAt?: string;
-  completedAt?: string;
+  startedAt?: string | number;
+  createdAt?: string | number;
+  endedAt?: string | number;
+  completedAt?: string | number;
   instanceId?: string;
   [key: string]: unknown;
 }
@@ -73,7 +89,8 @@ export async function logs(args: string[]): Promise<void> {
   if (args.includes('--nocolor')) useColor = false;
   const follow = args.includes('-f') || args.includes('--follow');
   const serverIdx = args.indexOf('--server');
-  const server = serverIdx !== -1 ? (args[serverIdx + 1] ?? DEFAULT_SERVER) : DEFAULT_SERVER;
+  const defaultServer = getDefaultServer();
+  const server = serverIdx !== -1 ? (args[serverIdx + 1] ?? defaultServer) : defaultServer;
   const limitIdx = args.indexOf('-n');
   const limit = limitIdx !== -1 ? parseInt(args[limitIdx + 1] ?? '20', 10) : 20;
 
@@ -92,7 +109,7 @@ export async function logs(args: string[]): Promise<void> {
 }
 
 async function showRecent(server: string, limit: number): Promise<void> {
-  const res = await fetch(`${server}/api/runs?limit=${limit}`).catch(() => null);
+  const res = await fetch(`${server}/api/job-runs?limit=${limit}`).catch(() => null);
   if (!res || !res.ok) {
     console.error(`Could not reach server at ${server} — is flue dev running?`);
     process.exit(1);
@@ -205,13 +222,14 @@ async function tailRun(server: string, runId: string): Promise<void> {
 
 function printRun(run: Run): void {
   const id = run.runId ?? run.id ?? '?';
-  const time = run.createdAt ? new Date(run.createdAt).toLocaleTimeString() : '?';
-  const agent = run.agentName ?? '?';
+  const time = run.startedAt ?? run.createdAt;
+  const timeStr = time ? new Date(time).toLocaleTimeString() : '?';
+  const agent = run.jobName ?? run.workflowName ?? run.agentName ?? '?';
   const status = run.status ?? '?';
   const instance = run.instanceId ?? '';
   const sc = STATUS_COLORS[status] ?? '';
   console.log(
-    `${c(DIM, time)}  ${c(sc || BOLD, pad(status, 10))}  ${c(MAGENTA, pad(agent, 15))}  ${instance ? c(BLUE, instance) + '  ' : ''}${c(DIM, id)}`,
+    `${c(DIM, timeStr)}  ${c(sc || BOLD, pad(status, 10))}  ${c(MAGENTA, pad(agent, 15))}  ${instance ? c(BLUE, instance) + '  ' : ''}${c(DIM, id)}`,
   );
 }
 

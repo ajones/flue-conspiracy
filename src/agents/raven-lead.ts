@@ -34,7 +34,7 @@ You do **not** have \`ha_*\` tools. The subagent does.
 - Load or execute the \`homeassistant\` skill (disabled — use the subagent instead)
 - Guess device state from memory — always delegate and wait for the subagent result
 
-Reply to the user with the result. Your text response will be delivered to the user automatically. For Telegram conversations, you can attach images by adding [[attach:/absolute/path/to/image.jpg]] on its own line (supported: jpg, png, gif, webp).`;
+Reply to the user with the result. Your text response will be delivered to the user automatically. To attach images (works on both iMessage and Telegram), add [[attach:/absolute/path/to/image.jpg]] on its own line in your response (supported: jpg, png, gif, webp). Do NOT use AppleScript, osascript, or imsg CLI to send messages or images — use [[attach:...]] instead.`;
 
 export default createAgent(() => {
   const { sandbox, cwd, hostWorkspacePath } = createAgentSandbox('raven-lead');

@@ -287,6 +287,11 @@ function normalizeEvent(event: ImsgEvent): ImsgEvent | null {
 }
 
 async function handleEvent(event: ImsgEvent) {
+  if (event.is_reaction) {
+    // TODO: handle tapback reactions (is_reaction_add, reaction_type, reaction_emoji, associated_message_guid)
+    return;
+  }
+
   let normalized = normalizeEvent(event);
   if (!normalized) {
     await loadChats().catch((err: any) => {
@@ -430,12 +435,16 @@ async function handleEvent(event: ImsgEvent) {
       span.setAttribute('raven.imessage.dispatch_id', reply.dispatchId);
     }
     const replyText = reply.diff ? `${reply.text}\n\n${reply.diff}` : reply.text;
-    if (replyText) {
-      await sendImessageText(convKey, replyText);
+    if (replyText || reply.imagePaths?.length) {
+      await sendImessageText(convKey, replyText, reply.imagePaths);
       pushHistory(chatId, { role: 'assistant', name: AGENT_DISPLAY_NAME, text: replyText });
       span.addEvent('reply.sent', {
         'raven.imessage.reply_length': reply.text.length,
+        'raven.imessage.image_count': reply.imagePaths?.length ?? 0,
       });
+    } else {
+      log.warn('Agent returned empty reply', { chatId, convKey, dispatchId: reply.dispatchId });
+      span.addEvent('reply.empty');
     }
 
     span.setStatus({ code: SpanStatusCode.OK });
@@ -446,6 +455,8 @@ async function handleEvent(event: ImsgEvent) {
       message: err instanceof Error ? err.message : String(err),
     });
     span.recordException(err instanceof Error ? err : new Error(String(err)));
+    sendImessageText(convKey, '⚠️ Something went wrong on my end. Try again?')
+      .catch((sendErr: any) => log.error('Failed to send error reply', { error: sendErr.message ?? String(sendErr) }));
     throw err;
   } finally {
     span.end();
@@ -533,7 +544,7 @@ export async function resolveImessageConversation(id: string): Promise<ImessageC
   return resolveConversationRef(chatId);
 }
 
-export async function sendImessageText(id: string, text: string): Promise<{ messageId?: number }> {
+export async function sendImessageText(id: string, text: string, filePaths?: string[]): Promise<{ messageId?: number }> {
   const chatId = parseConversationKey(id);
   if (!chatId) {
     throw new Error(`Unsupported imessage conversation key: ${id}`);
@@ -545,10 +556,25 @@ export async function sendImessageText(id: string, text: string): Promise<{ mess
     throw new Error(`No imessage agent assignment found for chat id ${chatId}`);
   }
 
-  const args = ['send', ...getDbArgs(), '--chat-id', String(chatId), '--text', text];
-  const messages = await runImsg<{ messageId?: number; id?: number }>(args);
-  const message = messages[0];
-  return { messageId: message?.messageId ?? message?.id };
+  const files = filePaths ?? [];
+  const baseArgs = ['send', ...getDbArgs(), '--chat-id', String(chatId)];
+
+  if (files.length === 0) {
+    const args = [...baseArgs, '--text', text];
+    const messages = await runImsg<{ messageId?: number; id?: number }>(args);
+    const message = messages[0];
+    return { messageId: message?.messageId ?? message?.id };
+  }
+
+  // Send text with first file, then remaining files separately
+  let lastMessageId: number | undefined;
+  for (let i = 0; i < files.length; i++) {
+    const args = [...baseArgs, '--file', files[i]];
+    if (i === 0 && text) args.push('--text', text);
+    const messages = await runImsg<{ messageId?: number; id?: number }>(args);
+    lastMessageId = messages[0]?.messageId ?? messages[0]?.id ?? lastMessageId;
+  }
+  return { messageId: lastMessageId };
 }
 
 export const channel = {

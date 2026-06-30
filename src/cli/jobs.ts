@@ -6,6 +6,7 @@ const USAGE = `raven jobs — manage scheduled jobs
 
 Commands:
   raven jobs list              List all jobs
+  raven jobs schedule          Show day-view schedule timeline (TUI)
   raven jobs create <file>     Create a job from a JSON file (or - for stdin)
   raven jobs show <name>       Show job details + recent runs
   raven jobs enable <name>     Enable a job
@@ -309,6 +310,10 @@ export async function jobs(args: string[]) {
   }
 
   if (sub === 'list' || sub === 'ls') return list(rest, asJson);
+  if (sub === 'schedule') {
+    const { jobsScheduleTui } = await import('./jobs-schedule-tui.ts');
+    return jobsScheduleTui();
+  }
   if (sub === 'create') return create(rest, asJson);
   if (sub === 'show') {
     if (!rest[0]) { console.error('Usage: raven jobs show <name>'); process.exit(1); }

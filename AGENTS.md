@@ -98,10 +98,10 @@ Jobs are managed through the raven gateway's HTTP API at `http://localhost:7284/
 
 ### Creating a Job
 
-Use `raven jobs create <file.json>` with a JSON file containing the job definition. The CLI tries the gateway API first and falls back to direct DB access if the gateway isn't running.
+Use `raven jobs create <file.json>` with a JSON file containing the job definition. The CLI tries the gateway API first and falls back to direct DB access if the gateway isn't running. Delete the JSON file after the job is created — it is not needed again.
 
 ```sh
-raven jobs create job.json
+raven jobs create job.json && rm job.json
 ```
 
 Job JSON structure:
