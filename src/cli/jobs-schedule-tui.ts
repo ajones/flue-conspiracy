@@ -16,6 +16,7 @@ const RED = '\x1b[31m';
 const CYAN = '\x1b[36m';
 const GREEN = '\x1b[32m';
 const BG_RED = '\x1b[41m';
+const BRIGHT_YELLOW = '\x1b[93m';
 const BG_YELLOW = '\x1b[43m';
 const BG_DARK = '\x1b[48;5;235m';
 const BLACK = '\x1b[30m';
@@ -107,6 +108,15 @@ class ScheduleTui {
   private selected = 0;
   private scrollOffset = 0;
   private infoMode = false;
+  private editMode: 'anchor' | 'interval' | null = null;
+  private editEntry: JobEntry | null = null;
+  private editAnchorMs = 0;
+  private editEveryMs = 0;
+  private editCronOrigExpr = '';
+  private editCronFirstFireMs = 0;
+  private editCronSpacingMs = 0;
+  private editCronFireCount = 0;
+  private draftSlots: Set<number> = new Set();
   private statusMsg: { text: string; error: boolean } | null = null;
   private statusTimer: ReturnType<typeof setTimeout> | null = null;
   private nameScroll = 0;
@@ -140,6 +150,8 @@ class ScheduleTui {
       .sort((a, b) => a.firstSlot - b.firstSlot);
   }
 
+  private lastKeyAt = 0;
+
   start() {
     process.stdout.write('\x1b[?1049h\x1b[2J\x1b[?25l'); // alt screen, clear, hide cursor
     process.stdin.setRawMode(true);
@@ -147,8 +159,9 @@ class ScheduleTui {
     process.stdin.on('data', d => this.onKey(d));
     process.stdout.on('resize', () => this.queueRender());
 
-    // Refresh once per minute to update current-time marker
-    this.refreshTimer = setInterval(() => this.queueRender(), 15_000);
+    this.refreshTimer = setInterval(() => {
+      if (Date.now() - this.lastKeyAt < 60_000) this.queueRender();
+    }, 15_000);
 
     this.updateNameScroll();
     this.render();
@@ -173,6 +186,7 @@ class ScheduleTui {
     this.nameScroll = 0;
     if (name.length > nameW) {
       this.nameScrollTimer = setInterval(() => {
+        if (Date.now() - this.lastKeyAt > 3_000) return;
         const maxScroll = name.length - nameW;
         this.nameScroll = (this.nameScroll + 1) % (maxScroll + 16); // +16 ≈ 3s pause at end before reset
         this.queueRender();
@@ -211,6 +225,130 @@ class ScheduleTui {
     }
   }
 
+  private anchorToTimeOfDay(ms: number): string {
+    const minuteOfDay = Math.round((ms - this.startOfDay.getTime()) % (24 * 60 * 60 * 1000) / 60_000 + 24 * 60) % (24 * 60);
+    const h = Math.floor(minuteOfDay / 60).toString().padStart(2, '0');
+    const m = (minuteOfDay % 60).toString().padStart(2, '0');
+    return `${h}:${m}`;
+  }
+
+  // Shift a cron expression by the delta between editAnchorMs and editCronFirstFireMs.
+  // Handles comma-separated hour lists like "10,15" by shifting all hours by the same delta.
+  private shiftedCronExpr(targetMs: number): string {
+    const parts = this.editCronOrigExpr.split(' ');
+    const origMinute = parseInt(parts[0], 10);
+    const origFirstHour = parseInt(parts[1].split(',')[0], 10);
+
+    const deltaMinutes = Math.round((targetMs - this.editCronFirstFireMs) / 60_000);
+    const origFirstTotal = origFirstHour * 60 + origMinute;
+    const newFirstTotal = origFirstTotal + deltaMinutes;
+    const newMinute = ((newFirstTotal % 60) + 60) % 60;
+    const newFirstHour = ((Math.floor(newFirstTotal / 60)) % 24 + 24) % 24;
+
+    const spacingHours = Math.round(this.editCronSpacingMs / 3_600_000);
+    const newHours = Array.from({ length: this.editCronFireCount }, (_, i) =>
+      (newFirstHour + spacingHours * i) % 24,
+    );
+
+    parts[0] = String(newMinute);
+    parts[1] = newHours.join(',');
+    return parts.join(' ');
+  }
+
+  private recomputeDraft() {
+    const s = this.editEntry!.job.scheduleData;
+    let draftSchedule: typeof s;
+    if (s.kind === 'weekday') {
+      draftSchedule = { ...s, timeOfDay: this.anchorToTimeOfDay(this.editAnchorMs) };
+    } else if (s.kind === 'cron') {
+      draftSchedule = { ...s, expr: this.shiftedCronExpr(this.editAnchorMs) };
+    } else {
+      draftSchedule = { kind: 'every' as const, everyMs: this.editEveryMs, anchorMs: this.editAnchorMs };
+    }
+    const fakeJob = { ...this.editEntry!.job, scheduleData: draftSchedule };
+    this.draftSlots = getFireDataForDay(fakeJob as any, this.startOfDay).slots;
+  }
+
+  private enterAnchorMode(entry: JobEntry) {
+    const s = entry.job.scheduleData;
+    if (s.kind !== 'every' && s.kind !== 'weekday' && s.kind !== 'cron') {
+      this.setStatus('editing only supported for every, weekday, and cron schedules', true);
+      return;
+    }
+    this.editEntry = entry;
+    if (s.kind === 'weekday') {
+      const [h, m] = s.timeOfDay.split(':').map(Number);
+      this.editAnchorMs = this.startOfDay.getTime() + (h * 60 + m) * 60_000;
+      this.editEveryMs = 0;
+    } else if (s.kind === 'cron') {
+      // Use computeNextRun for the initial anchor so timezone is handled correctly.
+      const firstFire = computeNextRun(s, new Date(this.startOfDay.getTime() - 1));
+      this.editCronOrigExpr = s.expr;
+      this.editCronFirstFireMs = firstFire ?? this.startOfDay.getTime();
+      this.editAnchorMs = this.editCronFirstFireMs;
+      this.editEveryMs = 0;
+      const cronHours = s.expr.split(' ')[1].split(',').map(h => parseInt(h, 10));
+      this.editCronFireCount = cronHours.length;
+      this.editCronSpacingMs = cronHours.length > 1 ? (cronHours[1] - cronHours[0]) * 3_600_000 : 0;
+    } else {
+      this.editEveryMs = s.everyMs;
+      // Use the first visible fire today so the cursor starts where the user sees it.
+      this.editAnchorMs = entry.slots.size > 0
+        ? (Math.min(...entry.slots) * 900_000 + this.startOfDay.getTime())
+        : this.startOfDay.getTime();
+    }
+    this.editMode = 'anchor';
+    this.recomputeDraft();
+    this.queueRender();
+  }
+
+  private cancelEdit() {
+    this.editMode = null;
+    this.editEntry = null;
+    this.draftSlots = new Set();
+    this.queueRender();
+  }
+
+  private async saveEdit() {
+    const entry = this.editEntry!;
+    const s = entry.job.scheduleData;
+    const newSchedule = s.kind === 'weekday'
+      ? { ...s, timeOfDay: this.anchorToTimeOfDay(this.editAnchorMs) }
+      : s.kind === 'cron'
+        ? { ...s, expr: this.shiftedCronExpr(this.editAnchorMs) }
+        : { kind: 'every' as const, everyMs: this.editEveryMs, anchorMs: this.editAnchorMs };
+    const base = getGatewayUrl();
+    try {
+      const res = await fetch(`${base}/api/jobs/${entry.job.name}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schedule: newSchedule }),
+      });
+      if (res.ok) {
+        this.cancelEdit();
+        await this.load();
+        this.setStatus(`saved ${entry.job.name}`);
+      } else {
+        const body = await res.json() as any;
+        this.setStatus(body.error ?? `error ${res.status}`, true);
+      }
+    } catch {
+      this.setStatus('gateway not reachable', true);
+    }
+  }
+
+  private formatMs(ms: number): string {
+    const mins = Math.round(ms / 60_000);
+    if (mins < 60) return `${mins}m`;
+    const hrs = mins / 60;
+    if (Number.isInteger(hrs)) return `${hrs}h`;
+    return `${Math.floor(hrs)}h${mins % 60}m`;
+  }
+
+  private formatAnchor(ms: number): string {
+    return this.anchorToTimeOfDay(ms);
+  }
+
   private queueRender() {
     if (this.renderQueued) return;
     this.renderQueued = true;
@@ -219,6 +357,7 @@ class ScheduleTui {
 
   private onKey(data: Buffer) {
     const s = data.toString();
+    this.lastKeyAt = Date.now();
 
     if (this.infoMode) {
       if (s === 'q' || s === '\x1b' || s === '\x03' || s === 'i') {
@@ -227,6 +366,41 @@ class ScheduleTui {
       } else if (s === 't') {
         const entry = this.jobs[this.selected];
         if (entry) { this.infoMode = false; this.triggerJob(entry); }
+      }
+      return;
+    }
+
+    if (this.editMode) {
+      if (s === '\x1b' || s === '\x03') { this.cancelEdit(); return; }
+
+      if (s === '\x1b[D') { // left
+        if (this.editMode === 'anchor') { this.editAnchorMs -= 900_000; this.recomputeDraft(); }
+        else if (this.editEntry!.job.scheduleData.kind === 'cron') {
+          this.editCronSpacingMs = Math.max(3_600_000, this.editCronSpacingMs - 3_600_000);
+          this.recomputeDraft();
+        } else { this.editEveryMs = Math.max(900_000, this.editEveryMs - 900_000); this.recomputeDraft(); }
+        this.queueRender();
+        return;
+      }
+      if (s === '\x1b[C') { // right
+        if (this.editMode === 'anchor') { this.editAnchorMs += 900_000; this.recomputeDraft(); }
+        else if (this.editEntry!.job.scheduleData.kind === 'cron') {
+          this.editCronSpacingMs += 3_600_000;
+          this.recomputeDraft();
+        } else { this.editEveryMs += 900_000; this.recomputeDraft(); }
+        this.queueRender();
+        return;
+      }
+      if (s === '\r' || s === '\n') {
+        const editKind = this.editEntry!.job.scheduleData.kind;
+        const cronHasSpacing = editKind === 'cron' && this.editCronFireCount > 1;
+        if (this.editMode === 'anchor' && (editKind === 'every' || cronHasSpacing)) {
+          this.editMode = 'interval';
+          this.queueRender();
+        } else {
+          this.saveEdit();
+        }
+        return;
       }
       return;
     }
@@ -248,10 +422,7 @@ class ScheduleTui {
     }
 
     if (s === 'i') {
-      if (this.jobs[this.selected]) {
-        this.infoMode = true;
-        this.queueRender();
-      }
+      if (this.jobs[this.selected]) { this.infoMode = true; this.queueRender(); }
     }
 
     if (s === 't') {
@@ -259,14 +430,9 @@ class ScheduleTui {
       if (entry) this.triggerJob(entry);
     }
 
-    if (s === '\r' || s === '\n') { // enter
+    if (s === '\r' || s === '\n') {
       const entry = this.jobs[this.selected];
-      if (!entry) return;
-      if (entry.fireCount > 1) {
-        this.queueRender();
-        return;
-      }
-      this.exit(entry);
+      if (entry) this.enterAnchorMode(entry);
     }
   }
 
@@ -326,6 +492,7 @@ class ScheduleTui {
     }
     out += `\x1b[${startRow + boxH - 1};${padX + 1}H${BG_DARK}${DIM}└${border}┘${R}`;
     out += `\x1b[${startRow + boxH};${padX + 1}H${DIM}  i/esc=close  t=trigger${R}\x1b[K`;
+    out += `\x1b[1;1H\x1b[?25l`;
 
     process.stdout.write(out);
   }
@@ -349,7 +516,18 @@ class ScheduleTui {
 
     // ── Title bar ──
     const title = `${BOLD}raven jobs schedule${R}  ${DIM}${getTodayLabel()}${R}`;
-    const hint = `${DIM}↑↓ navigate  i=info  t=trigger  enter=edit  q=quit${R}`;
+    const editKind = this.editEntry?.job.scheduleData.kind;
+    const cronHasSpacing = editKind === 'cron' && this.editCronFireCount > 1;
+    const isWeekdayEdit = this.editMode === 'anchor' && (editKind === 'weekday' || (editKind === 'cron' && !cronHasSpacing));
+    const intervalStep = editKind === 'cron' ? '1h' : '15m';
+    const editHint = this.editMode === 'anchor'
+      ? isWeekdayEdit
+        ? `${CYAN}time${R} ${DIM}← → shift  enter=save  esc=cancel${R}`
+        : `${CYAN}anchor${R} ${DIM}← → shift  enter=next  esc=cancel${R}`
+      : this.editMode === 'interval'
+        ? `${BRIGHT_YELLOW}spacing${R} ${DIM}← → ${intervalStep} steps  enter=save  esc=cancel${R}`
+        : `${DIM}↑↓ navigate  i=info  t=trigger  enter=edit  q=quit${R}`;
+    const hint = editHint;
     const titleLine = `  ${title}   ${hint}`;
     out += titleLine + CLR + '\n';
 
@@ -369,11 +547,13 @@ class ScheduleTui {
         out += DIM;
       }
 
-      // Show hour digit at quarter 0 and 2, space otherwise
+      // Show hour digit at quarter 0 and 1, space otherwise (12h format)
+      const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+      const h12str = String(h12).padStart(2, '0');
       if (quarter === 0) {
-        out += String(hour).padStart(2, '0')[0];
+        out += h12str[0];
       } else if (quarter === 1) {
-        out += String(hour).padStart(2, '0')[1];
+        out += h12str[1];
       } else {
         out += ' ';
       }
@@ -417,8 +597,13 @@ class ScheduleTui {
       }
 
       // Slot columns
+      const inEdit = isSelected && this.editMode !== null;
+      const activeSlots = inEdit ? this.draftSlots : slots;
+      const editColor = this.editMode === 'anchor' ? CYAN : BRIGHT_YELLOW;
+
       for (let slot = 0; slot < slotsToShow; slot++) {
-        const fires = slots.has(slot);
+        const fires = activeSlots.has(slot);
+        const ghost = inEdit && slots.has(slot) && !fires; // original position, now moved
         const isRed = slot === RED_SLOT_7AM || slot === RED_SLOT_9PM;
         const isCurrent = slot === currentSlot;
 
@@ -429,9 +614,11 @@ class ScheduleTui {
         } else if (isRed && fires) {
           out += `${BG_RED}${WHITE}█${R}`;
         } else if (isRed) {
-          out += `${BG_RED} ${R}`;
+          out += `${BG_RED}${ghost ? `${DIM}·` : ' '}${R}`;
         } else if (fires) {
-          out += job.enabled ? `${GREEN}█${R}` : `${DIM}▒${R}`;
+          out += inEdit ? `${editColor}█${R}` : (job.enabled ? `${GREEN}█${R}` : `${DIM}▒${R}`);
+        } else if (ghost) {
+          out += `${DIM}·${R}`;
         } else {
           out += `${DIM}·${R}`;
         }
@@ -446,9 +633,19 @@ class ScheduleTui {
       status = this.statusMsg.error
         ? `${RED}${this.statusMsg.text}${R}`
         : `${GREEN}${this.statusMsg.text}${R}`;
+    } else if (this.editMode === 'anchor') {
+      const itvDisplay = this.editEntry!.job.scheduleData.kind === 'cron'
+        ? this.formatMs(this.editCronSpacingMs)
+        : this.formatMs(this.editEveryMs);
+      status = `${CYAN}anchor${R} ${this.formatAnchor(this.editAnchorMs)}  ${DIM}spacing${R} ${itvDisplay}`;
+    } else if (this.editMode === 'interval') {
+      const itvDisplay = this.editEntry!.job.scheduleData.kind === 'cron'
+        ? this.formatMs(this.editCronSpacingMs)
+        : this.formatMs(this.editEveryMs);
+      status = `${DIM}anchor${R} ${this.formatAnchor(this.editAnchorMs)}  ${BRIGHT_YELLOW}spacing${R} ${itvDisplay}`;
     } else if (selectedEntry) {
       if (selectedMultiFire) {
-        status = `${RED}${selectedEntry.job.name}${R} fires ${selectedEntry.fireCount}× today — editing not available from this view`;
+        status = `${CYAN}${selectedEntry.job.name}${R} fires ${selectedEntry.fireCount}× today  ${DIM}enter=edit anchor  t=trigger${R}`;
       } else if (selectedEntry.fireCount === 0) {
         status = `${DIM}${selectedEntry.job.name} — no fires today${R}`;
       } else {
@@ -465,6 +662,9 @@ class ScheduleTui {
     }
 
     if (this.infoMode) this.renderInfo();
+
+    // Park cursor and re-hide after all writes are done
+    process.stdout.write(`\x1b[1;1H\x1b[?25l`);
   }
 }
 

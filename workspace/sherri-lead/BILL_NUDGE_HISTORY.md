@@ -8,3 +8,5 @@
 2026-06-25 | evening unplug loop
 2026-06-26 | golf-day guardrails
 2026-06-27 | home transition reset
+
+2026-06-30 | indoor weather hold

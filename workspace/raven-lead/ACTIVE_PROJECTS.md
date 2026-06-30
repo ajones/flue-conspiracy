@@ -52,11 +52,12 @@ Projects can have optional property lines directly below the status line (before
     - 2026-06-19: Aaron said the haircut is done.
 
 - [in progress] Refill mosquito bits
-  - check_after: 2026-06-21
+  - check_after: 2026-07-01
   - Updates:
     - 2026-06-15: Added by the mosquito-bits refill reminder.
     - 2026-06-17: Aaron said he has not refilled them yet and still needs to grab them.
     - 2026-06-20: Aaron said he has not refilled them yet and wants to keep it on the list.
+    - 2026-06-30: Aaron said it still needs to be done.
 
 - [done] Wash my pants
   - Updates:
@@ -255,11 +256,12 @@ Projects can have optional property lines directly below the status line (before
     - 2026-06-27: Aaron said the U-Haul trailer schedule is complete.
 
 - [in progress] Teacher P S cozy corner (preschool bookcase + reading area)
-  - check_after: 2026-06-25
+  - check_after: 2026-07-01
   - Updates:
     - 2026-05-14: Added per Aaron's request.
+    - 2026-06-30: Aaron said only the LEDs are left to install.
 
-- [in progress] Handle iMessage reactions
+- [done] Handle iMessage reactions
   - Updates:
     - 2026-06-29: Added per Aaron's request to track handling iMessage reactions.
     - 2026-05-14: Project is in the design phase.
@@ -281,6 +283,11 @@ Projects can have optional property lines directly below the status line (before
     - 2026-06-13: Aaron is working on it and wants a check-in in 3 days.
     - 2026-06-17: Aaron said it gets installed today.
     - 2026-06-17: Aaron corrected that it is not done yet, wants a follow-up tomorrow, and still needs LEDs for it.
+    - 2026-06-30: Aaron said it is done.
+
+- [not started] Print the kitchen soap holders with bow tie interlocks
+  - Updates:
+    - 2026-06-29: Added per Aaron's request to print the kitchen soap holders again with bow tie interlocks.
 
 - [done] Replace the refrigerator water filter and air filter
   - Updates:

@@ -96,6 +96,8 @@ Tools in `src/tools/` are typed Flue tool definitions. Each tool that calls the 
 
 Jobs are managed through the raven gateway's HTTP API at `http://localhost:7284/api/jobs` and the CLI (`raven jobs`).
 
+**Always delete temporary JSON files immediately after use.** If you write a `.json` file to create or update a job (via CLI or API), delete it as soon as the request completes. Do not leave stray JSON files in the repo.
+
 ### Creating a Job
 
 Use `raven jobs create <file.json>` with a JSON file containing the job definition. The CLI tries the gateway API first and falls back to direct DB access if the gateway isn't running. Delete the JSON file after the job is created — it is not needed again.
@@ -126,6 +128,7 @@ Required fields: `name` (kebab-case), `agent`, `prompt` or `promptFile`, `result
 
 - Use `promptFile` instead of `prompt` to point to a markdown file in `prompts/jobs/`. The file is rendered at runtime via `markupdown`, which resolves `![[...]]` includes.
 - `resultPreference` tells the agent how to deliver its output. It is appended to the assembled prompt at dispatch time. Read the prompt (or prompt file) to understand what the job produces, then write a `resultPreference` that matches — e.g. "Send the formatted message to the conversation." or "Reply with a short summary, no preamble."
+- **Never name a specific channel, group, or person in `resultPreference`.** Do not write "send to Mayhem MGMT", "post to the iMessage channel", "send a Telegram message to Aaron", etc. Use channel-agnostic language like "send the message to the conversation" or "send the report to the conversation." The `target` field already determines where it goes — the resultPreference should only describe what to send and how, not where.
 - You can also create jobs via the API directly with `POST /api/jobs` using the same JSON body.
 
 ### Schedule Types
@@ -178,12 +181,15 @@ Find existing chat IDs by querying the `flue_sessions` table in `.data/flue.db`.
 ```
 raven jobs list              # List all jobs
 raven jobs show <name>       # Show job details + recent runs
+raven jobs edit <name>       # Edit a job in $EDITOR
 raven jobs enable <name>     # Enable a disabled job
 raven jobs disable <name>    # Disable a job
 raven jobs delete <name>     # Delete a job
 raven jobs trigger <name>    # Trigger a manual run now
 raven jobs history [name]    # Show execution history
 ```
+
+`edit` opens the job's editable fields as JSON in `$EDITOR`. Save and quit to apply changes; quit without saving (or save with no changes) to abort. Renaming a job is not supported via edit — use delete + create instead.
 
 ### Options
 

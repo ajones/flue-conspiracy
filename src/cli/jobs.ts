@@ -1,5 +1,8 @@
 import { parseArgs } from 'node:util';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { getGatewayUrl } from '../config.ts';
 
 const USAGE = `raven jobs — manage scheduled jobs
@@ -8,6 +11,7 @@ Commands:
   raven jobs list              List all jobs
   raven jobs schedule          Show day-view schedule timeline (TUI)
   raven jobs create <file>     Create a job from a JSON file (or - for stdin)
+  raven jobs edit <name>       Edit a job in \$EDITOR
   raven jobs show <name>       Show job details + recent runs
   raven jobs enable <name>     Enable a job
   raven jobs disable <name>    Disable a job
@@ -249,6 +253,66 @@ async function create(args: string[], asJson: boolean) {
   console.log(`Created job "${job.name}". Next run: ${formatDate(job.nextRunAt)}`);
 }
 
+async function edit(name: string) {
+  const job = await api(`/jobs/${name}`);
+
+  const editable = {
+    agent: job.agent,
+    prompt: job.prompt || undefined,
+    promptFile: job.promptFile || undefined,
+    resultPreference: job.resultPreference,
+    target: job.target,
+    schedule: job.scheduleData,
+    description: job.description || undefined,
+    enabled: job.enabled,
+    tags: job.tags.length ? job.tags : undefined,
+    scripts: job.scripts.length ? job.scripts : undefined,
+    deleteAfterRun: job.deleteAfterRun || undefined,
+    maxRetries: job.maxRetries || undefined,
+    retryDelayMs: job.retryDelayMs !== 60000 ? job.retryDelayMs : undefined,
+    concurrencyKey: job.concurrencyKey || undefined,
+    maxConcurrency: job.maxConcurrency !== 1 ? job.maxConcurrency : undefined,
+    runTimeoutMs: job.runTimeoutMs !== 600000 ? job.runTimeoutMs : undefined,
+  };
+
+  // Strip undefined keys for clean JSON
+  const original = JSON.stringify(editable, (_k, v) => v === undefined ? undefined : v, 2);
+
+  const tmpFile = join(tmpdir(), `raven-job-${name}-${Date.now()}.json`);
+  writeFileSync(tmpFile, original, 'utf-8');
+
+  const editor = process.env.EDITOR ?? process.env.VISUAL ?? 'vi';
+  const result = spawnSync(editor, [tmpFile], { stdio: 'inherit' });
+  if (result.status !== 0) {
+    unlinkSync(tmpFile);
+    console.error('Editor exited with an error.');
+    process.exit(1);
+  }
+
+  const edited = readFileSync(tmpFile, 'utf-8');
+  unlinkSync(tmpFile);
+
+  if (edited === original) {
+    console.log('No changes.');
+    return;
+  }
+
+  let patch: Record<string, any>;
+  try {
+    patch = JSON.parse(edited);
+  } catch (e: any) {
+    console.error('Invalid JSON:', e.message);
+    process.exit(1);
+  }
+
+  const updated = await api(`/jobs/${name}`, {
+    method: 'PUT',
+    body: JSON.stringify(patch),
+  });
+
+  console.log(`Updated ${updated.name}. Next run: ${formatDate(updated.nextRunAt)}`);
+}
+
 async function history(args: string[], asJson: boolean) {
   const { positionals, values } = parseArgs({
     args,
@@ -310,11 +374,15 @@ export async function jobs(args: string[]) {
   }
 
   if (sub === 'list' || sub === 'ls') return list(rest, asJson);
-  if (sub === 'schedule') {
+  if (sub === 'schedule' || sub === 'scheduler') {
     const { jobsScheduleTui } = await import('./jobs-schedule-tui.ts');
     return jobsScheduleTui();
   }
   if (sub === 'create') return create(rest, asJson);
+  if (sub === 'edit') {
+    if (!rest[0]) { console.error('Usage: raven jobs edit <name>'); process.exit(1); }
+    return edit(rest[0]);
+  }
   if (sub === 'show') {
     if (!rest[0]) { console.error('Usage: raven jobs show <name>'); process.exit(1); }
     return show(rest[0], asJson);

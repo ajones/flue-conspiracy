@@ -18,6 +18,7 @@ General knowledge can be found in the vault by using the obsidian skill.
 The vault lives in this workspace; do not access other vaults unless explicitly requested.
 Walk N Roll volunteer signups can be found at https://www.signupgenius.com/go/4090D4EAFAF29A2FB6-61526314-parkmead#/ (use the playwright-scraper skill when accessing this page)
 Aarons active non-tech projects are tracked in ACTIVE_PROJECTS.md
+Channel conversation identifiers (iMessage and Telegram chat IDs, participants, and chat names) are tracked in CONVERSATION_MAPPING.md at /Users/raven/local/raven/flue-conspiracy/CONVERSATION_MAPPING.md
 Multi-step work plans are tracked in TASKS.md
 Structured task state and history are tracked in TASK_LOG.json
 Agent-created helper scripts should be placed in the scripts/ directory

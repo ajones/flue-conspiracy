@@ -35,3 +35,6 @@
 
 - 2026-04-25 - Need: ongoing conversational cueing and conversation boundaries
   Example: Bill spoke non-stop, repeated questions and observations every few minutes, interrupted others, tried to control the conversation, and did not fully participate even when calm.
+
+- 2026-06-29 - Need: bedtime and sleep routine support
+  Example: Sherri is trying to go to bed earlier to avoid Bill's evening behavior because he stays up late, is a night owl, and had repetitive behavior and agitation throughout the day.
