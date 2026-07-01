@@ -1,6 +1,6 @@
 ## Step 1 — Fetch a live Ring camera snapshot
 
-![[components/home-assistant-delegate.md]]
+![[home-assistant-delegate.md]]
 
 Ring cameras in Home Assistant only update their camera entity on motion events. To get a **live** frame, delegate to the `home-assistant` subagent and have it call `ha_ring_live_snapshot` with:
 

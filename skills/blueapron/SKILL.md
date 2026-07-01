@@ -95,7 +95,7 @@ node skills/blueapron/scripts/get-orders.js workspace/raven-lead/.blueapron.cred
 
 **After running the script:**
 1. Use `upcomingOrders` for the structured data (dates, item counts, per-order items).
-2. **IMPORTANT: Never present meals as a prose sentence with semicolons or commas.** Format each meal on its own line with a blank line between, no bullet dashes. Include the calorie count for each meal when available.
+2. **IMPORTANT: Never present meals as a prose sentence with semicolons or commas.** Format each meal on its own line with a blank line between, no bullet dashes. Always include the calorie count for each meal — if calories could not be found for a meal, show `— ? cal` as a placeholder.
 
 3. After listing meals, mention the cutoff date if available so the user knows when they need to make changes.
 
@@ -116,7 +116,7 @@ node skills/blueapron/scripts/get-orders.js workspace/raven-lead/.blueapron.cred
    ```
 
    - Join name and subtitle with "with" (not " — "). Drop the subtitle if blank.
-   - If the calorie count is available, append `— ### cal` to the end of the meal line.
+   - Always append the calorie count to the end of the meal line as `— ### cal`. If calories were not found for a meal, show `— ? cal`.
    - Pick a fitting food emoji per meal based on main ingredient/dish type.
    - Blank line between each meal for mobile readability. No bullet dashes.
 

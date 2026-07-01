@@ -94,7 +94,11 @@ Tools in `src/tools/` are typed Flue tool definitions. Each tool that calls the 
 
 ## Tests
 
+**Always write unit tests when implementing application logic.** Any file with pure functions, parsing, formatting, routing, or date/schedule math must have a corresponding test file.
+
 Test files live in a `__tests__/` folder that is a sibling of the implementation file being tested. For example, tests for `src/turn/classify.ts` go in `src/turn/__tests__/classify.test.ts`. Run tests with `bun <path-to-test-file>`.
+
+Export pure helper functions so they can be tested directly — prefer testing helpers individually over testing only the top-level function. I/O-heavy code (API calls, process spawning, file reads) does not need tests; focus coverage on the logic that could silently produce wrong results.
 
 ## Scheduled Jobs
 
