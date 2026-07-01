@@ -21,5 +21,4 @@ Every time this job runs, do the following:
    ```
    curl -sL "<imageUrl>" -o /tmp/frog-mage-$(date +%s).jpg
    ```
-
-6. Send the downloaded image file to the conversation.
+   Output the path to the downloaded file.

@@ -14,17 +14,17 @@ function isHoliday(date: Date): boolean {
   return US_FEDERAL_HOLIDAYS_2026.includes(iso);
 }
 
-function isWeekend(date: Date): boolean {
+export function isWeekend(date: Date): boolean {
   const day = date.getDay();
   return day === 0 || day === 6;
 }
 
-function dateInTz(date: Date, tz: string): Date {
+export function dateInTz(date: Date, tz: string): Date {
   const s = date.toLocaleString('en-US', { timeZone: tz });
   return new Date(s);
 }
 
-function nextDayAt(from: Date, timeOfDay: string, tz?: string): Date {
+export function nextDayAt(from: Date, timeOfDay: string, tz?: string): Date {
   const [hh, mm] = timeOfDay.split(':').map(Number);
   const target = new Date(from);
   target.setHours(hh, mm, 0, 0);

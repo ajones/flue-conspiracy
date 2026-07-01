@@ -455,11 +455,46 @@ class ScheduleTui {
     const pad = ' '.repeat(padX);
 
     const lines: string[] = [];
-    const add = (label: string, value: string) =>
-      lines.push(`  ${DIM}${label.padEnd(16)}${R}${value}`);
+    const labelW = 18; // "  " + 16-char label
+    const valueW = boxW - 3 - labelW;
+    const indent = ' '.repeat(labelW);
+
+    function wrapWords(text: string, maxW: number): string[] {
+      if (text.length <= maxW) return [text];
+      const result: string[] = [];
+      let line = '';
+      for (const word of text.split(' ')) {
+        if (!line) {
+          line = word.slice(0, maxW);
+          let rest = word.slice(maxW);
+          while (rest) { result.push(line); line = rest.slice(0, maxW); rest = rest.slice(maxW); }
+        } else if (line.length + 1 + word.length <= maxW) {
+          line += ' ' + word;
+        } else {
+          result.push(line);
+          line = word.slice(0, maxW);
+          let rest = word.slice(maxW);
+          while (rest) { result.push(line); line = rest.slice(0, maxW); rest = rest.slice(maxW); }
+        }
+      }
+      if (line) result.push(line);
+      return result;
+    }
+
+    const add = (label: string, value: string) => {
+      const plain = value.replace(/\x1b\[[^m]*m/g, '');
+      if (plain.length <= valueW) {
+        lines.push(`  ${DIM}${label.padEnd(16)}${R}${value}`);
+        return;
+      }
+      const wrapped = wrapWords(plain, valueW);
+      lines.push(`  ${DIM}${label.padEnd(16)}${R}${wrapped[0]}`);
+      for (const l of wrapped.slice(1)) lines.push(`${indent}${l}`);
+    };
 
     add('agent', job.agent);
     add('target', job.target);
+    if (job.resultPreference) add('delivery', job.resultPreference);
     add('enabled', job.enabled ? `${GREEN}yes${R}` : `${RED}no${R}`);
     add('schedule', formatSchedule(job));
     add('next run', formatDate(job.nextRunAt));
@@ -470,10 +505,22 @@ class ScheduleTui {
     if (job.tags?.length) add('tags', job.tags.join(', '));
     if (job.promptFile) add('prompt file', job.promptFile);
     lines.push('');
-    const promptLines = job.prompt.split('\n').slice(0, 6);
+    const promptLineW = boxW - 7; // "    " indent + 2 borders + 1 right pad
+    const rawPromptLines = job.prompt.split('\n');
     lines.push(`  ${DIM}prompt${R}`);
-    for (const l of promptLines) lines.push(`    ${DIM}${l}${R}`);
-    if (job.prompt.split('\n').length > 6) lines.push(`    ${DIM}…${R}`);
+    let promptLinesOut = 0;
+    for (const l of rawPromptLines) {
+      if (promptLinesOut >= 8) break;
+      const wrapped = wrapWords(l || ' ', promptLineW);
+      for (const wl of wrapped) {
+        if (promptLinesOut >= 8) break;
+        lines.push(`    ${DIM}${wl}${R}`);
+        promptLinesOut++;
+      }
+    }
+    if (promptLinesOut >= 8 && (rawPromptLines.length > 8 || rawPromptLines.some(l => l.length > promptLineW))) {
+      lines.push(`    ${DIM}…${R}`);
+    }
 
     const boxH = Math.min(lines.length + 4, rows - 4);
     const startRow = Math.floor((rows - boxH) / 2);
@@ -487,8 +534,8 @@ class ScheduleTui {
     for (let i = 0; i < boxH - 2; i++) {
       const content = lines[i] ?? '';
       const visible = content.replace(/\x1b\[[^m]*m/g, '');
-      const fill = ' '.repeat(Math.max(0, boxW - 2 - visible.length));
-      out += `\x1b[${startRow + 1 + i};${padX + 1}H${BG_DARK}${DIM}│${R}${BG_DARK}${content}${fill}${DIM}│${R}`;
+      const fill = ' '.repeat(Math.max(0, boxW - 3 - visible.length));
+      out += `\x1b[${startRow + 1 + i};${padX + 1}H${BG_DARK}${DIM}│${R}${BG_DARK}${content}${fill} ${DIM}│${R}`;
     }
     out += `\x1b[${startRow + boxH - 1};${padX + 1}H${BG_DARK}${DIM}└${border}┘${R}`;
     out += `\x1b[${startRow + boxH};${padX + 1}H${DIM}  i/esc=close  t=trigger${R}\x1b[K`;

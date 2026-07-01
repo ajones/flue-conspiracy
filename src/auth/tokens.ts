@@ -22,7 +22,7 @@ export interface TokenExpiry {
   isExpired: boolean;
 }
 
-function decodeJwtExp(token: string): number | null {
+export function decodeJwtExp(token: string): number | null {
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   try {

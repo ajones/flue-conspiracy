@@ -3,7 +3,7 @@ import type { ScriptDef, ScriptResult } from './types.ts';
 
 const MAX_ERROR_LINES = 25;
 
-function truncate(text: string, maxLines: number): string {
+export function truncate(text: string, maxLines: number): string {
   const lines = text.split('\n');
   if (lines.length <= maxLines) return text;
   return lines.slice(0, maxLines).join('\n') + `\n... (truncated, ${lines.length - maxLines} more lines)`;

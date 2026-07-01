@@ -8,7 +8,7 @@ export const TELEGRAM_PARSE_MODE = 'Markdown' as const;
 const SEGMENT = '\uE000';
 const BOLD = '\uE001';
 
-function protectCode(text: string): { text: string; segments: string[] } {
+export function protectCode(text: string): { text: string; segments: string[] } {
   const segments: string[] = [];
   const protectedText = text.replace(/```[\s\S]*?```|`[^`\n]+`/g, (match) => {
     const index = segments.length;
@@ -18,7 +18,7 @@ function protectCode(text: string): { text: string; segments: string[] } {
   return { text: protectedText, segments };
 }
 
-function restoreCode(text: string, segments: string[]): string {
+export function restoreCode(text: string, segments: string[]): string {
   return text.replace(new RegExp(`${SEGMENT}(\\d+)${SEGMENT}`, 'g'), (_, index) => {
     return segments[Number(index)] ?? '';
   });
