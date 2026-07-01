@@ -260,6 +260,10 @@ export async function restart() {
   await start();
 }
 
+export async function reinstall() {
+  return install();
+}
+
 export async function serviceStatus() {
   const { port } = loadConfig();
 

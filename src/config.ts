@@ -22,6 +22,8 @@ export interface ImessageConversationConfig {
   identifier?: string;
   guid?: string;
   name?: string;
+  /** If true, Raven will also respond to open group questions where an AI could add value. Default: false. */
+  helpfulReplies?: boolean;
 }
 
 export interface AgentSkillsConfig {

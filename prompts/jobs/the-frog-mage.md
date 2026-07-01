@@ -17,19 +17,9 @@ Every time this job runs, do the following:
 
 4. Append the chosen `imageUrl` to the history file (one URL per line).
 
-5. Download the image to a temp file:
+5. Download the image to a temp file using a unix timestamp in the filename:
    ```
-   curl -sL "<imageUrl>" -o /tmp/frog-mage-latest.jpg
-   ```
-
-6. Send the image file via iMessage to `+15127407713`:
-   ```
-   osascript -e '
-   tell application "Messages"
-     set targetService to id of 1st service whose service type = iMessage
-     set theFile to POSIX file "/tmp/frog-mage-latest.jpg"
-     send theFile to buddy "+15127407713" of service id targetService
-   end tell'
+   curl -sL "<imageUrl>" -o /tmp/frog-mage-$(date +%s).jpg
    ```
 
-7. Output only the word `NO_REPLY` — the image was already sent directly via osascript.
+6. Send the downloaded image file to the conversation.

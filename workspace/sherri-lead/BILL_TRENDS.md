@@ -19,3 +19,5 @@
   Description: Bill has started forgetting to take his set-out medications for multiple consecutive days, which now requires Sherri to administer them directly; this adds another layer of supervision needed for daily care.
 - Detected: 2026-06-15 12:01
   Description: Travel and off-routine transitions reliably make Bill more stressed and control-seeking, especially around who is driving and arriving at unfamiliar places; this showed up during trip prep, the drive, and the settle-in period across 6/8-6/10.
+- Detected: 2026-07-01 15:00
+  Description: In the late afternoon and evening, Bill often shifts into a repeatable checking routine centered on blinds, plugs, lights, doors, and furniture, with pacing and talkativeness; this showed up on 6/18, 6/19, 6/21, 6/23, 6/24, and 6/26.

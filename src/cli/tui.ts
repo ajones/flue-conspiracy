@@ -3,12 +3,29 @@ import { getGatewayUrl } from '../config.ts';
 import { isClearCommand } from '../session-clear.ts';
 import { isSessionCommand } from '../session-commands.ts';
 
+import { spawn } from 'node:child_process';
+
 const BASE_URL = getGatewayUrl();
+
+const SERVICE_COMMANDS: Record<string, string> = {
+  '/reinstall': 'reinstall',
+  '/install': 'install',
+  '/uninstall': 'uninstall',
+  '/restart': 'restart',
+  '/start': 'start',
+  '/stop': 'stop',
+  '/status': 'status',
+};
+
+function isServiceCommand(text: string): boolean {
+  return text.split(' ')[0] in SERVICE_COMMANDS;
+}
 
 const DIM = '\x1b[2m';
 const BOLD = '\x1b[1m';
 const CYAN = '\x1b[36m';
 const GREEN = '\x1b[32m';
+const YELLOW = '\x1b[33m';
 const RED = '\x1b[31m';
 const RESET = '\x1b[0m';
 const CLR = '\x1b[K';
@@ -16,6 +33,7 @@ const CLR = '\x1b[K';
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  activity?: string[];
 }
 
 function moveTo(r: number, c: number) {
@@ -49,6 +67,8 @@ class Tui {
   private renderQueued = false;
   private loadingFrame = 0;
   private loadingTimer: ReturnType<typeof setInterval> | null = null;
+  private thinkingText = '';
+  private thinkingActivityIdx = -1;
 
   constructor(agent: string) {
     this.agent = agent;
@@ -104,11 +124,44 @@ class Tui {
 
   private render() {
     const { rows, cols } = this;
-    const msgAreaHeight = rows - 6;
-    const contentWidth = cols - 4;
+    const prefixLen = 2; // '❯ '
+    const w1 = Math.max(1, cols - prefixLen); // first input row capacity
+    const wN = Math.max(1, cols);              // subsequent input row capacity
+
+    // How many rows the input occupies
+    const rawInputHeight = this.input.length <= w1
+      ? 1
+      : 1 + Math.ceil((this.input.length - w1) / wN);
+    // Ensure there's a row for the cursor even when at end of a full row
+    const cursorAbs = prefixLen + this.cursor;
+    const cursorRowOffset = Math.floor(cursorAbs / cols);
+    const inputHeight = Math.max(rawInputHeight, cursorRowOffset + 1);
+    const clampedInputHeight = Math.min(inputHeight, 5);
+
+    // Layout (1-indexed rows):
+    // 1            : header
+    // 2..msgEnd    : messages
+    // msgEnd+1     : top separator
+    // msgEnd+2..   : input rows (clampedInputHeight)
+    // inputEnd+1   : bottom separator
+    // inputEnd+2   : status
+    const msgAreaHeight = Math.max(0, rows - 4 - clampedInputHeight);
+    const contentWidth = Math.max(1, cols - 4);
+
+    const headerRow = 1;
+    const msgStartRow = 2;
+    const topSepRow = msgStartRow + msgAreaHeight;
+    const inputStartRow = topSepRow + 1;
+    const botSepRow = inputStartRow + clampedInputHeight;
+    const statusRow = botSepRow + 1;
 
     const lines: string[] = [];
     for (const m of this.messages) {
+      if (m.activity) {
+        for (const a of m.activity) {
+          lines.push(`  ${a}`);
+        }
+      }
       if (m.role === 'assistant' && m.content === '' && this.busy) {
         lines.push(`${CYAN}▸ ${DIM}${this.loadingDots()}${RESET}`);
       } else {
@@ -122,20 +175,32 @@ class Tui {
     }
 
     const visible = lines.slice(-msgAreaHeight);
-    let out = moveTo(1, 1);
+    let out = '';
 
-    out += `${BOLD}raven${RESET} ${DIM}— ${CYAN}${this.agent}${RESET}${CLR}\n`;
+    out += moveTo(headerRow, 1) + `${BOLD}raven${RESET} ${DIM}— ${CYAN}${this.agent}${RESET}${CLR}`;
 
     for (let i = 0; i < msgAreaHeight; i++) {
-      out += (i < visible.length ? visible[i] : '') + CLR + '\n';
+      out += moveTo(msgStartRow + i, 1) + (i < visible.length ? visible[i] : '') + CLR;
     }
 
-    out += `${DIM}${'─'.repeat(cols)}${RESET}\n`;
-    out += `${GREEN}${BOLD}❯ ${RESET}${this.input}${CLR}\n`;
-    out += `${DIM}${'─'.repeat(cols)}${RESET}\n`;
+    out += moveTo(topSepRow, 1) + `${DIM}${'─'.repeat(cols)}${RESET}${CLR}`;
+
+    for (let i = 0; i < clampedInputHeight; i++) {
+      out += moveTo(inputStartRow + i, 1);
+      if (i === 0) {
+        out += `${GREEN}${BOLD}❯ ${RESET}` + this.input.slice(0, w1) + CLR;
+      } else {
+        out += this.input.slice(w1 + (i - 1) * wN, w1 + i * wN) + CLR;
+      }
+    }
+
+    out += moveTo(botSepRow, 1) + `${DIM}${'─'.repeat(cols)}${RESET}${CLR}`;
     const status = `${DIM}${this.agent}${RESET}  ${DIM}ctrl+c to ${this.input ? 'clear' : 'exit'}${RESET}`;
-    out += status + CLR;
-    out += moveTo(rows - 3, 3 + this.cursor) + '\x1b[?25h';
+    out += moveTo(statusRow, 1) + status + CLR;
+
+    const cursorRow = inputStartRow + cursorRowOffset;
+    const cursorCol = (cursorAbs % cols) + 1;
+    out += moveTo(cursorRow, cursorCol) + '\x1b[?25h';
 
     process.stdout.write(out);
   }
@@ -158,6 +223,12 @@ class Tui {
       const text = this.input.trim();
       if (!text) return;
       if (text === '/quit' || text === '/exit' || text === '/q') return this.exit();
+      if (isServiceCommand(text)) {
+        this.input = '';
+        this.cursor = 0;
+        void this.runServiceCommand(text);
+        return;
+      }
       if (isSessionCommand(text)) {
         this.input = '';
         this.cursor = 0;
@@ -208,6 +279,23 @@ class Tui {
     this.render();
   }
 
+  private async runServiceCommand(text: string) {
+    const subcommand = SERVICE_COMMANDS[text.split(' ')[0]];
+    if (!subcommand) return;
+
+    // Exit TUI, run the command in the normal terminal, then quit.
+    this.stopLoadingAnimation();
+    process.stdout.write('\x1b[?1049l\x1b[?25h');
+    process.stdin.setRawMode(false);
+
+    await new Promise<void>((resolve) => {
+      const child = spawn('raven', [subcommand], { stdio: 'inherit' });
+      child.on('close', () => resolve());
+    });
+
+    process.exit(0);
+  }
+
   private async runSessionCommand(command: string) {
     if (isClearCommand(command)) {
       this.messages = [];
@@ -244,8 +332,15 @@ class Tui {
     this.render();
   }
 
+  private thinkingActivityLine(): string {
+    const preview = this.thinkingText.trimStart().split('\n')[0].slice(0, 120);
+    return `${DIM}${YELLOW}◦ thinking${preview ? `  ${preview}` : ''}${RESET}`;
+  }
+
   private async send(text: string) {
     this.busy = true;
+    this.thinkingText = '';
+    this.thinkingActivityIdx = -1;
     this.messages.push({ role: 'assistant', content: '' });
     const lastIdx = this.messages.length - 1;
     this.startLoadingAnimation();
@@ -319,6 +414,43 @@ class Tui {
             if (ev.type === 'text_delta') {
               if (this.messages[lastIdx].content === '') this.stopLoadingAnimation();
               this.messages[lastIdx].content += ev.text;
+              changed = true;
+            } else if (ev.type === 'thinking_start') {
+              const msg = this.messages[lastIdx];
+              if (!msg.activity) msg.activity = [];
+              this.thinkingText = '';
+              this.thinkingActivityIdx = msg.activity.length;
+              msg.activity.push(this.thinkingActivityLine());
+              changed = true;
+            } else if (ev.type === 'thinking_delta') {
+              this.thinkingText += ev.delta ?? '';
+              const msg = this.messages[lastIdx];
+              if (msg.activity && this.thinkingActivityIdx >= 0) {
+                msg.activity[this.thinkingActivityIdx] = this.thinkingActivityLine();
+              }
+              changed = true;
+            } else if (ev.type === 'thinking_end') {
+              if (ev.content) this.thinkingText = ev.content;
+              const msg = this.messages[lastIdx];
+              if (msg.activity && this.thinkingActivityIdx >= 0) {
+                msg.activity[this.thinkingActivityIdx] = this.thinkingActivityLine();
+              }
+              changed = true;
+            } else if (ev.type === 'tool_start') {
+              const msg = this.messages[lastIdx];
+              if (!msg.activity) msg.activity = [];
+              let detail: string = ev.toolName ?? 'tool';
+              if (ev.args) {
+                if (ev.toolName === 'bash' && ev.args.command) {
+                  const cmd = String(ev.args.command);
+                  detail += `  $ ${cmd.length > 80 ? cmd.slice(0, 80) + '…' : cmd}`;
+                } else if (ev.args.path) {
+                  detail += `  ${ev.args.path}`;
+                } else if (ev.args.pattern) {
+                  detail += `  ${ev.args.pattern}`;
+                }
+              }
+              msg.activity.push(`${DIM}${CYAN}◦ ${detail}${RESET}`);
               changed = true;
             } else if (ev.type === 'idle') {
               closed = true;

@@ -92,6 +92,10 @@ Tools in `src/tools/` are typed Flue tool definitions. Each tool that calls the 
 2. Register it in `src/agent.ts`.
 3. If the tool calls Codex, import `getAccessToken()` from `src/auth/tokens.ts`.
 
+## Tests
+
+Test files live in a `__tests__/` folder that is a sibling of the implementation file being tested. For example, tests for `src/turn/classify.ts` go in `src/turn/__tests__/classify.test.ts`. Run tests with `bun <path-to-test-file>`.
+
 ## Scheduled Jobs
 
 Jobs are managed through the raven gateway's HTTP API at `http://localhost:7284/api/jobs` and the CLI (`raven jobs`).

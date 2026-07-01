@@ -19,8 +19,8 @@ function isSilentJobReply(text: string): boolean {
   return SILENT_JOB_REPLIES.has(text.trim());
 }
 
-function buildDeliveryMessage(resultPreference: string, result: string): string {
-  return [
+function buildDeliveryMessage(resultPreference: string, result: string, imagePaths?: string[]): string {
+  const lines = [
     'Deliver the scheduled job result below. This is a delivery-only step.',
     'Do not delegate to subagents or re-fetch any data.',
     'Only use messaging tools for delivery; do not use other tools.',
@@ -33,7 +33,17 @@ function buildDeliveryMessage(resultPreference: string, result: string): string 
     '<job-result>',
     result,
     '</job-result>',
-  ].join('\n');
+  ];
+  if (imagePaths && imagePaths.length > 0) {
+    lines.push(
+      '',
+      '<job-attachments>',
+      ...imagePaths,
+      '</job-attachments>',
+      'The image(s) above are already staged for delivery. Return only the text portion of your response — do not attempt to re-attach or re-fetch the images.',
+    );
+  }
+  return lines.join('\n');
 }
 
 export interface SchedulerConfig {
@@ -170,7 +180,7 @@ export class Scheduler {
     }
 
     for (const job of batch) {
-      const concKey = job.concurrencyKey ?? job.id;
+      const concKey = job.concurrencyKey ?? job.name;
       const active = this.running.get(concKey) ?? [];
 
       if (active.length >= job.maxConcurrency) {
@@ -220,7 +230,7 @@ export class Scheduler {
     }, async (jobSpan) => {
       const runId = preRunId ?? crypto.randomUUID();
       const now = Date.now();
-      const concKey = job.concurrencyKey ?? job.id;
+      const concKey = job.concurrencyKey ?? job.name;
 
       if (!preRunId) {
         this.trackRunning(concKey, { jobId: job.id, runId, startedAt: now, timeoutMs: job.runTimeoutMs });
@@ -338,7 +348,7 @@ export class Scheduler {
                   target: job.target,
                   instruction: job.resultPreference,
                   result: jobResult.text,
-                  message: buildDeliveryMessage(job.resultPreference, jobResult.text),
+                  message: buildDeliveryMessage(job.resultPreference, jobResult.text, jobResult.imagePaths),
                 },
               }, { parentContext: otelContext.active() });
 
@@ -427,7 +437,7 @@ export class Scheduler {
     const job = db.getJob(jobId);
     if (!job) throw new Error(`Job not found: ${jobId}`);
 
-    const concKey = job.concurrencyKey ?? job.id;
+    const concKey = job.concurrencyKey ?? job.name;
     const active = this.running.get(concKey) ?? [];
     if (active.length >= job.maxConcurrency) {
       throw new Error(`Job "${job.name}" at concurrency limit (${job.maxConcurrency})`);

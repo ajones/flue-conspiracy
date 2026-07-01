@@ -6,19 +6,19 @@ metadata:
 
 # markdown
 
-Convert markdown to an HTML fragment (no `<html>`/`<body>` wrapper) using the helper script at `md2html.py` in this skill's directory.
+Convert markdown to an HTML fragment (no `<html>`/`<body>` wrapper) using `md2html.py` in this skill's directory. Run the script with `python3 <skill-dir>/md2html.py`.
 
 ## Usage
 
 ```bash
 # From a string
-echo "# Hello" | python3 skills/markdown/md2html.py
+echo "# Hello" | python3 <skill-dir>/md2html.py
 
 # From a file
-python3 skills/markdown/md2html.py input.md
+python3 <skill-dir>/md2html.py input.md
 
 # Capture output for use in another command
-html=$(echo "**bold text**" | python3 skills/markdown/md2html.py)
+html=$(echo "**bold text**" | python3 <skill-dir>/md2html.py)
 ```
 
 ## Output
@@ -56,6 +56,6 @@ Output:
 ## Integration with gws-gmail-send
 
 ```bash
-html=$(cat summary.md | python3 skills/markdown/md2html.py)
+html=$(cat summary.md | python3 <skill-dir>/md2html.py)
 gws gmail +send --to recipient@example.com --subject "Subject" --body "$html" --html
 ```

@@ -51,6 +51,7 @@ const tracer = trace.getTracer('raven');
 const chatCache = new Map<number, ImsgChat>();
 const groupCache = new Map<number, ImsgGroup>();
 const assignedAgents = new Map<number, string>();
+const helpfulRepliesEnabled = new Map<number, boolean>();
 const messageHistory = new Map<number, ConversationMessage[]>();
 let watchStarted = false;
 
@@ -130,6 +131,7 @@ function identityMatches(chat: ImsgChat | ImsgGroup, conversation: ImessageConve
 
 async function loadAssignments(): Promise<void> {
   assignedAgents.clear();
+  helpfulRepliesEnabled.clear();
   const conversations = getImessageConversations();
   if (conversations.length === 0) return;
 
@@ -157,6 +159,7 @@ async function loadAssignments(): Promise<void> {
     }
 
     assignedAgents.set(chat.id, conversation.agent);
+    helpfulRepliesEnabled.set(chat.id, conversation.helpfulReplies ?? false);
     trackAgentInstance(`imessage:chat:${chat.id}`, conversation.agent);
   }
 
@@ -282,6 +285,8 @@ function normalizeEvent(event: ImsgEvent): ImsgEvent | null {
     attachments: event.attachments ?? [],
     createdAt: event.created_at ?? event.createdAt ?? event.timestamp,
     isFromMe: event.is_from_me ?? event.isFromMe ?? false,
+    replyToGuid: event.reply_to_guid ?? event.replyToGuid ?? null,
+    replyToText: event.reply_to_text ?? event.replyToText ?? null,
     raw: event,
   };
 }
@@ -369,7 +374,11 @@ async function handleEvent(event: ImsgEvent) {
           'raven.turn.history_length': getHistory(chatId).length,
         });
 
-        if (turnResult === 'none' || turnResult === 'unknown') {
+        const shouldSkip =
+          turnResult === 'none' ||
+          turnResult === 'unknown' ||
+          (turnResult === 'helpful' && !helpfulRepliesEnabled.get(chatId));
+        if (shouldSkip) {
           log.debug('Skipping dispatch — not our turn', { chatId, result: turnResult });
           span.setAttribute('raven.imessage.skipped', true);
           span.setAttribute('raven.imessage.skip_reason', turnResult);
@@ -377,10 +386,14 @@ async function handleEvent(event: ImsgEvent) {
           return;
         }
       } catch (err: any) {
-        log.error('Turn classification failed, dispatching anyway', { chatId, error: err.message ?? String(err) });
+        log.error('Turn classification failed, skipping dispatch', { chatId, error: err.message ?? String(err) });
         span.addEvent('turn.classification_error', {
           'raven.turn.error': err.message ?? String(err),
         });
+        span.setAttribute('raven.imessage.skipped', true);
+        span.setAttribute('raven.imessage.skip_reason', 'classification_error');
+        span.setStatus({ code: SpanStatusCode.OK });
+        return;
       }
     }
 
@@ -424,6 +437,8 @@ async function handleEvent(event: ImsgEvent) {
         createdAt: normalized.createdAt,
         attachments: normalized.attachments,
         isFromMe: normalized.isFromMe,
+        replyToGuid: normalized.replyToGuid,
+        replyToText: normalized.replyToText,
         raw: normalized.raw,
         ...spreadContext(ctx),
       },

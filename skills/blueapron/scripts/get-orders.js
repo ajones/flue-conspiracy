@@ -20,13 +20,8 @@
  * Output: JSON to stdout with structured order details.
  */
 
-const playwrightPath = require('path').join(
-    require('os').homedir(),
-    'local/raven/flue-conspiracy/skills/playwright-scraper/node_modules/playwright'
-);
-const { chromium } = require(playwrightPath);
-const fs = require('fs');
-const path = require('path');
+import { chromium } from 'playwright';
+import { readFileSync } from 'fs';
 
 const credsPath = process.argv[2];
 const headless = process.env.HEADLESS !== 'false';
@@ -163,7 +158,7 @@ if (!credsPath) {
 // Parse env-style credentials file (KEY=VALUE, one per line)
 const creds = {};
 try {
-    const lines = fs.readFileSync(credsPath, 'utf-8').split('\n');
+    const lines = readFileSync(credsPath, 'utf-8').split('\n');
     for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith('#')) continue;

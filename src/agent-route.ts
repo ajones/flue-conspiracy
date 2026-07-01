@@ -4,7 +4,7 @@ import { SpanStatusCode, context as otelContext, trace } from '@opentelemetry/ap
 import adapter from './db.ts';
 import { gatherContext, spreadContext } from './context.ts';
 import { trackAgentInstance } from './agent-names.ts';
-import { trackDispatchContext } from './instrumentation.ts';
+import { trackDispatchContext, trackTuiDispatch } from './instrumentation.ts';
 import { recordSessionCommandSpan, sessionCommandJsonBody, tryHandleSessionCommand } from './session-commands.ts';
 import { createLogger } from './log.ts';
 
@@ -118,6 +118,7 @@ export function createContextGatheringRoute(agentName: string): AgentRouteHandle
         if (receipt.dispatchId) {
           span.setAttribute('raven.tui.dispatch_id', receipt.dispatchId);
           trackDispatchContext(receipt.dispatchId, otelContext.active());
+          trackTuiDispatch(receipt.dispatchId, otelContext.active());
         }
 
         const streamUrl = invocationStreamUrl(c.req.raw);

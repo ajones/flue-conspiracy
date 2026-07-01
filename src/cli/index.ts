@@ -10,6 +10,7 @@ Usage:
   raven restart            Restart the gateway
   raven tui [agent]        Chat with an agent
   raven install            Install as a launchd service
+  raven reinstall          Reinstall the launchd service (uninstall + install)
   raven uninstall          Remove the launchd service
   raven status             Show service status
   raven jobs list          List scheduled jobs
@@ -48,12 +49,13 @@ async function main() {
   }
 
   if (command === 'start' || command === 'stop' || command === 'restart'
-    || command === 'install' || command === 'uninstall' || command === 'status') {
-    const { start, stop, install, uninstall, restart, serviceStatus } = await import('./service.ts');
+    || command === 'install' || command === 'reinstall' || command === 'uninstall' || command === 'status') {
+    const { start, stop, install, reinstall, uninstall, restart, serviceStatus } = await import('./service.ts');
     if (command === 'start') return start();
     if (command === 'stop') return stop();
     if (command === 'restart') return restart();
     if (command === 'install') return install();
+    if (command === 'reinstall') return reinstall();
     if (command === 'uninstall') return uninstall();
     if (command === 'status') return serviceStatus();
   }

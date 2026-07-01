@@ -341,11 +341,7 @@ For each ADL, assign one of three levels: Independent, Needs Help, or Total Depe
 
 Each bullet item in all sections follows the same two-line format: observation text on the first line, dates in `(M/D, M/D)` format indented on the second line, followed by one blank line before the next item.
 
-After generating the summary, convert it to HTML using the markdown skill helper script:
-
-```bash
-html=$(echo "$summary" | python3 ~/.openclaw/skills/markdown/md2html.py)
-```
+After generating the summary, convert it to HTML using the markdown skill.
 
 Then send via email using `--html` to:
 - Aaron: r.aaron.jones@gmail.com

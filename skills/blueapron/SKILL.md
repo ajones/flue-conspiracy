@@ -15,7 +15,7 @@ Interact with Blue Apron to check upcoming orders and meal details.
 
 ## Prerequisites
 
-The Playwright scraper skill must be installed at `skills/playwright-scraper`. The `get-orders.js` script uses Playwright with stealth techniques (hidden `navigator.webdriver`, realistic User-Agent) to avoid bot detection.
+Run `npm install` inside `skills/blueapron/` before the first use to install Playwright. The `get-orders.js` script uses Playwright with stealth techniques (hidden `navigator.webdriver`, realistic User-Agent) to avoid bot detection.
 
 ## Credentials
 
@@ -37,17 +37,13 @@ Retrieve the next shipment's meals and details.
 **CLI usage:**
 
 ```bash
-cd skills/playwright-scraper && \
-  node skills/blueapron/scripts/get-orders.js <path-to-credentials>
+node skills/blueapron/scripts/get-orders.js <path-to-credentials>
 ```
-
-The script must be run from the playwright-scraper directory so that `require('playwright')` resolves correctly.
 
 **Example:**
 
 ```bash
-cd skills/playwright-scraper && \
-  node skills/blueapron/scripts/get-orders.js .blueapron.credentials
+node skills/blueapron/scripts/get-orders.js workspace/raven-lead/.blueapron.credentials
 ```
 
 **Environment variables:**
@@ -126,7 +122,6 @@ cd skills/playwright-scraper && \
 
 ## References
 
-- Playwright scraper skill: `skills/playwright-scraper`
 - Blue Apron orders page: `https://www.blueapron.com/orders`
 
 ## Guardrails

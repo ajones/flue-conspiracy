@@ -65,7 +65,6 @@ export default createAgent(() => {
   return {
     profile,
     model: 'openai-codex/gpt-5.4-mini',
-    tools: [...workspaceContextTools],
     cwd,
     sandbox,
   };

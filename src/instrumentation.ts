@@ -5,9 +5,9 @@ import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import type { SpanExporter, ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import type { ExportResult } from '@opentelemetry/core';
-import { type Context, context as otelContext, trace as otelTrace } from '@opentelemetry/api';
+import { type Context, SpanStatusCode, context as otelContext, trace as otelTrace } from '@opentelemetry/api';
 import { createOpenTelemetryObserver } from '@flue/opentelemetry';
-import { observe } from '@flue/runtime';
+import { observe, type FlueEvent } from '@flue/runtime';
 import { getAgentName } from './agent-names.ts';
 import { compactLargeAttributes } from './trace-content.ts';
 
@@ -19,6 +19,17 @@ export function trackDispatchContext(dispatchId: string, ctx: Context): void {
 
 export function untrackDispatchContext(dispatchId: string): void {
   dispatchContexts.delete(dispatchId);
+}
+
+interface TuiDispatchState {
+  ctx: Context;
+  rootOperationId: string | undefined;
+}
+
+const tuiDispatchStates = new Map<string, TuiDispatchState>();
+
+export function trackTuiDispatch(dispatchId: string, ctx: Context): void {
+  tuiDispatchStates.set(dispatchId, { ctx, rootOperationId: undefined });
 }
 
 class AgentServiceNameExporter implements SpanExporter {
@@ -125,6 +136,56 @@ if (process.env.OTEL_DISABLED !== 'true') {
       return undefined;
     },
   }));
+
+  const tuiTracer = otelTrace.getTracer('raven');
+
+  observe((event: FlueEvent) => {
+    if (!event.dispatchId) return;
+    const state = tuiDispatchStates.get(event.dispatchId);
+    if (!state) return;
+
+    if (event.type === 'operation_start' && event.operationKind === 'prompt' && !state.rootOperationId) {
+      state.rootOperationId = event.operationId;
+      return;
+    }
+
+    if (event.type === 'operation' && event.operationKind === 'prompt' && event.operationId === state.rootOperationId) {
+      tuiDispatchStates.delete(event.dispatchId);
+
+      const replyText = (() => {
+        const r = event.result;
+        if (r && typeof r === 'object' && 'text' in r && typeof (r as any).text === 'string') {
+          return (r as any).text as string;
+        }
+        return '';
+      })();
+
+      otelContext.with(state.ctx, () => {
+        tuiTracer.startActiveSpan('tui.reply', (span) => {
+          try {
+            span.setAttributes({
+              'raven.tui.reply_length': replyText.length,
+              'raven.tui.operation_duration_ms': event.durationMs ?? 0,
+              ...(replyText ? { 'raven.tui.reply': replyText.slice(0, 4000) } : {}),
+              ...(event.usage?.input != null ? { 'raven.tui.input_tokens': event.usage.input } : {}),
+              ...(event.usage?.output != null ? { 'raven.tui.output_tokens': event.usage.output } : {}),
+            });
+            if (event.isError) {
+              const errMsg = typeof event.error === 'object' && event.error && 'message' in event.error
+                ? String((event.error as any).message)
+                : typeof event.error === 'string' ? event.error : 'Agent operation failed';
+              span.setStatus({ code: SpanStatusCode.ERROR, message: errMsg });
+              span.recordException(new Error(errMsg));
+            } else {
+              span.setStatus({ code: SpanStatusCode.OK });
+            }
+          } finally {
+            span.end();
+          }
+        });
+      });
+    }
+  });
 
   observe((event: { type: string; dispatchId?: string }) => {
     if (event.type === 'operation' && event.dispatchId) {

@@ -10,3 +10,4 @@
 2026-06-27 | home transition reset
 
 2026-06-30 | indoor weather hold
+2026-07-01 | key-item landing spot

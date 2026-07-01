@@ -24,17 +24,17 @@ const SKILL_TRIGGER_RE = /(?:^|\s)\/[A-Za-z][A-Za-z0-9_-]*(?!\/)\b/m;
 const PATH_LIKE_RE = /\S\/\S/;
 const REACTION_RE = /^(?:liked|loved|laughed at|reacted(?: [^ ]+)? to|disliked|emphasized)\b/i;
 
-function hasSkillTrigger(text: string): boolean {
+export function hasSkillTrigger(text: string): boolean {
   const trimmed = (text ?? '').trim();
   if (PATH_LIKE_RE.test(trimmed)) return false;
   return SKILL_TRIGGER_RE.test(trimmed);
 }
 
-function isReaction(text: string): boolean {
+export function isReaction(text: string): boolean {
   return REACTION_RE.test((text ?? '').trim());
 }
 
-function formatMessages(messages: ConversationMessage[]): string {
+export function formatMessages(messages: ConversationMessage[]): string {
   return messages
     .filter((m) => m.text.length > 0)
     .map((m) => `${m.name}: ${m.text}`)
@@ -72,14 +72,16 @@ Output NONE if:
 - The latest message is directed at a specific named person other than ${agentName}.
 - The latest message is a direct reply to another human's message and does not explicitly address ${agentName}.
 - The latest message is a short acknowledgment or closing phrase after ${agentName} just replied — "thanks", "perfect", "got it", "sounds good", "ok".
-- The latest message is a direct answer ("yes", "no") to a question ${agentName} just asked — the exchange is complete.
+- The latest message is a direct factual answer to a question ${agentName} just asked (e.g. "Sarah", "3pm", "the blue one") — the exchange is complete. Exception: if ${agentName}'s question asked for permission or confirmation to take an action ("Want me to…?", "Should I…?", "Shall I…?", "Can I…?"), a "yes" or affirmative response means ${agentName} must now act — classify as ${agentName}, not NONE.
 - The latest message uses "anyone else", "someone else" immediately after ${agentName} acted.
 - The latest message is a reaction (emoji, "liked", "laughed at") to any message.
 - The conversation is clearly human-to-human chatter with no invitation for broader participation.
 
 When in doubt between ${agentName} and HELPFUL, prefer HELPFUL.
 When in doubt between HELPFUL and UNKNOWN, prefer HELPFUL.
-When in doubt between UNKNOWN and NONE, prefer UNKNOWN.`);
+When in doubt between UNKNOWN and NONE, prefer UNKNOWN.
+
+Respond with JSON in the format: {"turn": "<result>"}`);
 
   if (participants?.length) {
     sections.push(`Speakers: ${participants.join(', ')}\n---`);
@@ -89,7 +91,7 @@ When in doubt between UNKNOWN and NONE, prefer UNKNOWN.`);
   return sections.join('\n\n');
 }
 
-function normalizeResult(raw: string, agentName: string): TurnResult {
+export function normalizeResult(raw: string, agentName: string): TurnResult {
   const cleaned = raw.trim().toUpperCase();
   if (cleaned === agentName.toUpperCase() || cleaned.includes(agentName.toUpperCase())) return 'agent';
   if (cleaned === 'HELPFUL' || cleaned.includes('HELPFUL')) return 'helpful';
