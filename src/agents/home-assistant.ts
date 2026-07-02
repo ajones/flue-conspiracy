@@ -2,8 +2,9 @@ import { createAgent, defineAgentProfile, defineTool } from '@flue/runtime';
 import { createContextGatheringRoute } from '../agent-route.ts';
 import { getHomeAssistantConfig } from '../config.ts';
 import { createLogger } from '../log.ts';
+import { callCodex } from '../codex.ts';
 import { execFile } from 'node:child_process';
-import { readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createAgentSandbox } from '../agent-system-context.ts';
@@ -373,7 +374,42 @@ const ringLiveSnapshot = defineTool({
   },
 });
 
-export const homeAssistantTools = [getStates, callService, getEntityState, searchEntities, renderTemplate, ringLiveSnapshot];
+const analyzeImage = defineTool({
+  name: 'ha_analyze_image',
+  description:
+    'Analyze a local image file by sending it to the vision model with a question. Returns the model\'s answer as text. Use this after ha_ring_live_snapshot to visually analyze the captured image.',
+  parameters: {
+    type: 'object',
+    properties: {
+      path: {
+        type: 'string',
+        description: 'Absolute local path to the image file (e.g. from ha_ring_live_snapshot)',
+      },
+      question: {
+        type: 'string',
+        description: 'The question to ask about the image',
+      },
+    },
+    required: ['path', 'question'],
+    additionalProperties: false,
+  },
+  async execute(args: Record<string, any>) {
+    const { path, question } = args as { path: string; question: string };
+    log.info('ha_analyze_image', { path, question: question.slice(0, 100) });
+    const imageData = readFileSync(path).toString('base64');
+    const answer = await callCodex({
+      instructions: 'You are a vision assistant. Answer questions about images precisely and concisely.',
+      prompt: question,
+      images: [{ data: imageData, mimeType: 'image/jpeg' }],
+      store: false,
+      purpose: 'image-analysis',
+    });
+    log.info('ha_analyze_image result', { path, answer: answer.slice(0, 200) });
+    return answer;
+  },
+});
+
+export const homeAssistantTools = [getStates, callService, getEntityState, searchEntities, renderTemplate, ringLiveSnapshot, analyzeImage];
 
 export const homeAssistantProfile = defineAgentProfile({
   name: 'home-assistant',
@@ -402,6 +438,7 @@ Tool selection:
 - ha_call_service: control devices (turn on/off, set temperature, etc.) or activate scenes
 - ha_render_template: advanced Jinja2 queries (integration lookups, area discovery)
 - ha_ring_live_snapshot: wake Ring cameras and download a live JPEG snapshot to a local temp file
+- ha_analyze_image: analyze a local image file using the vision model — **always use this after ha_ring_live_snapshot, never use bash or Python to analyze images**
 
 Service domain rules:
 - The service domain must match the entity domain: light.* → light.turn_on, switch.* → switch.turn_off
@@ -415,6 +452,8 @@ Brightness mappings: dim=64, half=128, full=255. Color temp: warm=400 mireds, ne
 If unsure which entity the user means, search first and ask for clarification if ambiguous.
 Single, clearly identified entity with no matching scene → act directly.
 Bulk operations ("turn off all lights") → confirm with user first.
+
+Image analysis rule: never use bash, Python, Swift, or any external tool to analyze image files. Always use ha_analyze_image. If ha_analyze_image is not available, say so and stop.
 
 Be concise. Confirm actions with a short summary of what changed.
 

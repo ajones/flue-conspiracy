@@ -4,26 +4,27 @@
 
 ![[components/home-assistant-delegate.md]]
 
-This job runs Tuesday evening and Wednesday morning, around trash pickup. Check whether the trash cans are still in the driveway — meaning they have **not** yet been rolled out to the street for trash pickup (pickup is Wednesday morning).
+This job runs Tuesday evening and Wednesday morning, around trash pickup. Check whether the trash cans are still in the driveway — meaning they have **not** yet been rolled out to the street (pickup is Wednesday morning).
 
 ![[components/ring-live-snapshot.md?CAMERA_ENTITY=camera.driveway_live_view&SNAP_NAME=trash-day-check-snap]]
 
-## Step 2 – Analyze the image
+## Step 2 – Visual analysis question (pass this verbatim as the `question` to `ha_analyze_image`)
 
-Read and examine the snapshot file at the `path` returned by `ha_ring_live_snapshot` using your image-reading capability.
+> This is a driveway security camera. The driveway runs center-to-right in the frame; the street is at the far left.
+>
+> Are any trash cans or recycling bins visible? If so, where are they — in the driveway (center/right of frame) or at the street curb (far left)? Describe what you see.
+>
+> Answer with JSON: `{"description": "...", "cans_in_driveway": true/false/null}`
+> - `true` = cans visible in the driveway area (center or right)
+> - `false` = cans at the street curb (far left) or not visible in the driveway
+> - `null` = image too dark or genuinely unclear
 
-This is a security camera looking down the driveway toward the street. The driveway runs roughly center-to-right in the frame; the street is on the **far left** of the image.
+## Step 3 – Decide and compose
 
-- Trash cans/recycling bins appearing in the **center or right** of the image → still in the driveway, **not** taken out yet.
-- Trash cans/recycling bins appearing on the **far left** of the image → already out at the street curb.
+Using `cans_in_driveway` from the home-assistant task result:
 
-**Decision:**
-- Trash cans are **visible in the center or right (still in the driveway)** → continue to Step 3.
-- Trash cans are **on the far left (at the street curb)** or **not visible in the driveway** (already put out) → continue to Step 3, but write a short congratulations message to Aaron and Ashley instead of a reminder.
-- Image is **too dark, unclear, or inconclusive** → reply with exactly `NO_REPLY` and stop. Do not send a false alarm.
+- `true` → compose a short, casual reminder (1–2 sentences) that 🗑️ trash pickup is today/tomorrow and the cans still need to be rolled out.
+- `false` → compose a short congratulations (1–2 sentences) for Aaron and Ashley that the cans are already out.
+- `null` or task returned an error → reply with exactly `NO_REPLY` and stop.
 
-## Step 3 – Compose message
-
-If the cans are still in the driveway, compose a short, casual reminder — 1–2 sentences — that 🗑️ trash pickup is today/tomorrow (whichever is accurate based on the current day/time) and the cans still need to be rolled out. Keep it friendly and brief.
-
-If the cans are already out at the curb, compose a short congratulations — 1–2 sentences — for Aaron and Ashley, acknowledging that the trash is handled. Keep it warm and brief.
+Append `[[attach:PATH]]` on its own line at the end of your reply so the image is included with the message.

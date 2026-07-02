@@ -56,6 +56,13 @@ const cases: Case[] = [
     ],
     expect: 'agent',
   },
+  {
+    label: 'Message addressed to "bun" (not the agent) → none',
+    messages: [
+      { role: 'user', name: 'Aaron Jones', text: 'bun we can drop 1 of these. I was thinking about dropping the grilled cheese. Thoughts?' },
+    ],
+    expect: 'none',
+  },
 ];
 
 let passed = 0;

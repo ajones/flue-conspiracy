@@ -104,10 +104,13 @@ interface JobEntry {
 }
 
 class ScheduleTui {
+  private allJobs: JobEntry[] = [];
   private jobs: JobEntry[] = [];
   private selected = 0;
   private scrollOffset = 0;
   private infoMode = false;
+  private searchMode = false;
+  private searchQuery = '';
   private editMode: 'anchor' | 'interval' | null = null;
   private editEntry: JobEntry | null = null;
   private editAnchorMs = 0;
@@ -141,13 +144,14 @@ class ScheduleTui {
 
     this.startOfDay = getStartOfDayLA();
 
-    this.jobs = rawJobs
+    this.allJobs = rawJobs
       .map(job => {
         const { slots, fireCount } = getFireDataForDay(job, this.startOfDay);
         const firstSlot = slots.size > 0 ? Math.min(...slots) : Infinity;
         return { job, slots, fireCount, firstSlot };
       })
       .sort((a, b) => a.firstSlot - b.firstSlot);
+    this.jobs = [...this.allJobs];
   }
 
   private lastKeyAt = 0;
@@ -355,6 +359,43 @@ class ScheduleTui {
     setTimeout(() => { this.renderQueued = false; this.render(); }, 16);
   }
 
+  private fuzzyMatch(name: string, query: string): boolean {
+    if (!query) return true;
+    const n = name.toLowerCase();
+    const q = query.toLowerCase();
+    let qi = 0;
+    for (let i = 0; i < n.length && qi < q.length; i++) {
+      if (n[i] === q[qi]) qi++;
+    }
+    return qi === q.length;
+  }
+
+  private updateSearch() {
+    const q = this.searchQuery;
+    this.jobs = q ? this.allJobs.filter(e => this.fuzzyMatch(e.job.name, q)) : [...this.allJobs];
+    this.selected = 0;
+    this.scrollOffset = 0;
+    this.updateNameScroll();
+    this.queueRender();
+  }
+
+  private exitSearch(confirm: boolean) {
+    const selectedName = this.jobs[this.selected]?.job.name;
+    this.searchMode = false;
+    this.searchQuery = '';
+    this.jobs = [...this.allJobs];
+    if (confirm && selectedName) {
+      const idx = this.jobs.findIndex(e => e.job.name === selectedName);
+      if (idx >= 0) this.selected = idx;
+    } else {
+      this.selected = 0;
+    }
+    this.scrollOffset = 0;
+    this.clampScroll();
+    this.updateNameScroll();
+    this.queueRender();
+  }
+
   private onKey(data: Buffer) {
     const s = data.toString();
     this.lastKeyAt = Date.now();
@@ -405,6 +446,34 @@ class ScheduleTui {
       return;
     }
 
+    if (this.searchMode) {
+      if (s === '\x1b' || s === '\x03') { this.exitSearch(false); return; }
+      if (s === '\r' || s === '\n') { this.exitSearch(true); return; }
+      if (s === '\x7f' || s === '\x08') { // backspace
+        this.searchQuery = this.searchQuery.slice(0, -1);
+        this.updateSearch();
+        return;
+      }
+      if (s === '\x1b[A' || s === 'k') { // up
+        if (this.selected > 0) { this.selected--; this.updateNameScroll(); }
+        this.clampScroll();
+        this.queueRender();
+        return;
+      }
+      if (s === '\x1b[B' || s === 'j') { // down
+        if (this.selected < this.jobs.length - 1) { this.selected++; this.updateNameScroll(); }
+        this.clampScroll();
+        this.queueRender();
+        return;
+      }
+      if (s.length === 1 && s >= ' ') {
+        this.searchQuery += s;
+        this.updateSearch();
+        return;
+      }
+      return;
+    }
+
     if (s === 'q' || s === '\x1b' || s === '\x03') {
       this.exit();
     }
@@ -419,6 +488,17 @@ class ScheduleTui {
       if (this.selected < this.jobs.length - 1) { this.selected++; this.updateNameScroll(); }
       this.clampScroll();
       this.queueRender();
+    }
+
+    if (s === '/') {
+      this.searchMode = true;
+      this.searchQuery = '';
+      this.jobs = [...this.allJobs];
+      this.selected = 0;
+      this.scrollOffset = 0;
+      this.updateNameScroll();
+      this.queueRender();
+      return;
     }
 
     if (s === 'i') {
@@ -573,7 +653,9 @@ class ScheduleTui {
         : `${CYAN}anchor${R} ${DIM}← → shift  enter=next  esc=cancel${R}`
       : this.editMode === 'interval'
         ? `${BRIGHT_YELLOW}spacing${R} ${DIM}← → ${intervalStep} steps  enter=save  esc=cancel${R}`
-        : `${DIM}↑↓ navigate  i=info  t=trigger  enter=edit  q=quit${R}`;
+        : this.searchMode
+          ? `${CYAN}/${this.searchQuery}▌${R}  ${DIM}${this.jobs.length} match${this.jobs.length !== 1 ? 'es' : ''}  ↑↓ navigate  enter=confirm  esc=cancel${R}`
+          : `${DIM}↑↓ navigate  /=search  i=info  t=trigger  enter=edit  q=quit${R}`;
     const hint = editHint;
     const titleLine = `  ${title}   ${hint}`;
     out += titleLine + CLR + '\n';
@@ -676,7 +758,9 @@ class ScheduleTui {
 
     // ── Status bar ──
     let status = '';
-    if (this.statusMsg) {
+    if (this.searchMode) {
+      status = `${CYAN}/${this.searchQuery}▌${R}  ${DIM}${this.jobs.length} match${this.jobs.length !== 1 ? 'es' : ''}${R}`;
+    } else if (this.statusMsg) {
       status = this.statusMsg.error
         ? `${RED}${this.statusMsg.text}${R}`
         : `${GREEN}${this.statusMsg.text}${R}`;

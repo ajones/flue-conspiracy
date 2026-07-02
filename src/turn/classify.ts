@@ -1,6 +1,5 @@
-import { getAccessToken } from '../auth/tokens.ts';
 import { createLogger } from '../log.ts';
-import { logModelCall } from '../model-observer.ts';
+import { callCodex } from '../codex.ts';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
 
 const log = createLogger('turn');
@@ -133,94 +132,16 @@ export async function classifyTurn(
     span.setAttribute('raven.turn.message_count', messages.length);
 
     try {
-      const token = await getAccessToken();
-      logModelCall({
+      const raw = (await callCodex({
         model,
-        provider: 'openai-codex',
+        instructions: 'You are a turn classifier for group conversations. Respond only with valid JSON.',
+        prompt,
+        format: 'json_object',
+        reasoning: { effort: 'low' },
         agent: agentName,
         purpose: 'turn-classify',
-      });
-      let raw = '';
-      const response = await fetch('https://chatgpt.com/backend-api/codex/responses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'text/event-stream',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          model,
-          stream: true,
-          instructions: 'You are a turn classifier for group conversations. Respond only with valid JSON.',
-          input: [{ role: 'user', content: prompt }],
-          text: { format: { type: 'json_object' } },
-          reasoning: { effort: 'low' },
-          store: false,
-        }),
-      });
+      })) || '{}';
 
-      if (!response.ok) {
-        const text = await response.text();
-        span.recordException(text);
-        span.setStatus({ code: SpanStatusCode.ERROR, message: `Turn classifier failed (${response.status})` });
-        log.error('Turn classifier call failed', { status: response.status, body: text.slice(0, 200) });
-        throw new Error(`Turn classifier failed (${response.status}): ${text}`);
-      }
-
-      if (!response.body) {
-        throw new Error('Turn classifier stream missing response body');
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = '';
-      let currentEvent = '';
-      let closed = false;
-
-      while (!closed) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split('\n');
-        buf = lines.pop() ?? '';
-
-        for (const line of lines) {
-          if (line.startsWith('event:')) {
-            currentEvent = line.slice(6).trim();
-            continue;
-          }
-          if (!line.startsWith('data:')) continue;
-
-          const rawData = line.slice(5).trim();
-          if (!rawData) continue;
-
-          try {
-            const parsed = JSON.parse(rawData) as
-              | { type?: string; delta?: string }
-              | Array<{ type?: string; delta?: string }>;
-            const events = Array.isArray(parsed) ? parsed : [parsed];
-            for (const event of events) {
-              if (event.type === 'response.output_text.delta' && typeof event.delta === 'string') {
-                raw += event.delta;
-              }
-            }
-          } catch {
-            // Ignore malformed SSE data chunks.
-          }
-
-          if (currentEvent === 'control') {
-            try {
-              const control = JSON.parse(rawData) as { streamClosed?: boolean };
-              if (control.streamClosed) closed = true;
-            } catch {
-              // Ignore malformed control frames.
-            }
-          }
-        }
-      }
-
-      raw ||= '{}';
       let parsed: { turn?: string };
       try {
         parsed = JSON.parse(raw);
